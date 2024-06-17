@@ -8,24 +8,24 @@ import matplotlib.pyplot as plt
 
 # Specify Data for Testing
 
-project = None
-experiment = None
-sample = None
-data_path = None
-metadata_path = None
-correction_data_path = None
+# project = none
+# experiment = None
+# sample = None
+# data_path = None
+# metadata_path = None
+# correction_data_path = None
 
 def specify_data(which = str):
 
-  global project
-  global experiment
-  global sample
-  global data_path
-  global metadata_path
-  global correction_data_path
+#   global project
+#   global experiment
+#   global sample
+#   global data_path
+#   global metadata_path
+#   global correction_data_path
 
   if which == 'real':
-    project = '/content/drive/My Drive/DATA'
+    globals()['project'] = '/content/drive/My Drive/DATA'
     experiment = 'Exp 2024-05-03 - 4D HSI Rat Tendon + Nerve'
     # experiment = 'Test Data' # the same with less cubes
     sample = 'right_leg_tendon_nerve'
