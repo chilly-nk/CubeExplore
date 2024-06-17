@@ -1,4 +1,4 @@
-import imagej
+# import imagej
 
 import os
 import numpy as np
@@ -8,12 +8,12 @@ import matplotlib.pyplot as plt
 
 # Specify Data for Testing
 
-  project = None
-  experiment = None
-  sample = None
-  data_path = None
-  metadata_path = None
-  correction_data_path = None
+project = None
+experiment = None
+sample = None
+data_path = None
+metadata_path = None
+correction_data_path = None
 
 def specify_data(which = str):
 
