@@ -49,3 +49,7 @@ def specify_data(which = str):
   print('Data:', data_path)
   print('Metadata:', metadata_path)
   print('Correction Data:', correction_data_path)
+
+
+def test():
+  globals()['testvariable'] = 'nothing'
