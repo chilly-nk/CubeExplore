@@ -54,3 +54,10 @@ def specify_data(which = str):
 def test():
   globals()['testvariable'] = 'nothing'
   print(testvariable)
+
+# mymodule.py
+
+def define_globals():
+    global var1, var2
+    var1 = "Hello"
+    var2 = "World"
