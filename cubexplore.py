@@ -53,3 +53,4 @@ def specify_data(which = str):
 
 def test():
   globals()['testvariable'] = 'nothing'
+  print(testvariable)
