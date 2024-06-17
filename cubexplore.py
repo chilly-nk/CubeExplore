@@ -17,28 +17,45 @@ import inspect
 # metadata_path = None
 # correction_data_path = None
 
-def specify_data(which = str):
+def some_data(which = str):
   caller_globals = inspect.stack()[1][0].f_globals
 
   if which == 'real':
-    caller_globals['project'] = '/content/drive/My Drive/DATA'
-    caller_globals['experiment'] = 'Exp 2024-05-03 - 4D HSI Rat Tendon + Nerve'
-    caller_globals['sample'] = 'right_leg_tendon_nerve'
-    caller_globals['dataset'] = 'cubes'
     
-    caller_globals['data_path'] = os.path.join(project, experiment, sample, dataset)
-    caller_globals['metadata_path'] = os.path.join(project, experiment, sample, 'metadata.csv')
-    caller_globals['correction_data_path'] = os.path.join(project, experiment, sample, 'correction_data.lnk')
+    project = '/content/drive/My Drive/DATA'
+    experiment = 'Exp 2024-05-03 - 4D HSI Rat Tendon + Nerve'
+    sample = 'right_leg_tendon_nerve'
+    dataset = 'cubes'
+    data_path = os.path.join(project, experiment, sample, dataset)
+    metadata_path = os.path.join(project, experiment, sample, 'metadata.csv')
+    correction_data_path = os.path.join(project, experiment, sample, 'correction_data.lnk')
+    
+    caller_globals['project'] = project
+    caller_globals['experiment'] = experiment
+    caller_globals['sample'] = sample
+    caller_globals['dataset'] = dataset
+    caller_globals['data_path'] = data_path
+    caller_globals['metadata_path'] = metadata_path
+    caller_globals['correction_data_path'] = correction_data_path
 
   elif which == 'test':
-    caller_globals['project'] = '/content/drive/My Drive/DATA'
-    caller_globals['experiment'] = 'Test Data' # the same with less cubes
-    caller_globals['sample'] = 'right_leg_tendon_nerve'
-    caller_globals['dataset'] = 'cubes'
     
-    caller_globals['data_path'] = os.path.join(project, experiment, sample, dataset)
-    caller_globals['metadata_path'] = os.path.join(project, experiment, sample, 'metadata.csv')
-    caller_globals['correction_data_path'] = os.path.join(project, experiment, sample, 'correction_data')
+    project = '/content/drive/My Drive/DATA'
+    experiment = 'Test Data' # the same with less cubes
+    sample = 'right_leg_tendon_nerve'
+    dataset = 'cubes'
+    data_path = os.path.join(project, experiment, sample, dataset)
+    metadata_path = os.path.join(project, experiment, sample, 'metadata.csv')
+    correction_data_path = os.path.join(project, experiment, sample, 'correction_data')
+    
+    caller_globals['project'] = project
+    caller_globals['experiment'] = experiment
+    caller_globals['sample'] = sample
+    caller_globals['dataset'] = dataset
+    
+    caller_globals['data_path'] = data_path
+    caller_globals['metadata_path'] = metadata_path
+    caller_globals['correction_data_path'] = correction_data_path
 
   print('Data:', data_path)
   print('Metadata:', metadata_path)
