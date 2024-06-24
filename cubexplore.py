@@ -1,5 +1,3 @@
-# import imagej
-
 import os
 import numpy as np
 import pandas as pd
@@ -13,7 +11,7 @@ ij = imagej.init('sc.fiji:fiji')
 """LOAD CUBES"""
 # Version: 2024-06-24
 
-def load_cubes_im3(data_path, metadata_path = None, correction_data_path = None):
+def load_cubes_im3(data_path, metadata_path = None):
 
   cube_names = sorted(os.listdir(data_path))
   cubes = {}
@@ -51,9 +49,6 @@ def load_cubes_im3(data_path, metadata_path = None, correction_data_path = None)
           cubes[cube]['notes'] = note
       else:
         print('Warning! Metadata and cubes do not match')
-
-  if correction_data_path:
-    globals()['correction_data_path'] = correction_data_path # Getting it here (for desktop user convenience), but will be used in process_cubes() function
 
   return cubes
 
