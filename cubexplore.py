@@ -3,7 +3,12 @@
 import os
 import numpy as np
 import pandas as pd
+imort seaborn as sns
 import matplotlib.pyplot as plt
+
+# Initiate pyimagej (at fiji mode)
+import imagej
+ij = imagej.init('sc.fiji:fiji')
 
 """LOAD CUBES"""
 # Version: 2024-06-24
