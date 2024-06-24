@@ -53,7 +53,12 @@ def load_cubes_im3(data_path, metadata_path = None):
   return cubes
 
 """PROCESS CUBES"""
-# Version 2024-06-17
+
+# Version 2024-06-24
+
+"""
+Fixing data_corrected_byMean to only data_corrected, as later it is messing up things (in ROIs)
+"""
 
 def process_cubes(cubes, cubes_to_analyse, correction_data_path = None):
 
@@ -93,11 +98,11 @@ def process_cubes(cubes, cubes_to_analyse, correction_data_path = None):
       ex = cubes[cube]['ex']
       if ex in list(wavelengths_needed): #maybe this is odd, i don't remember, will check later
 
-        correction_factor_byMean = correction_data_average[ex]/correction_data_average.mean()
-        cubes[cube]['correction_factor_byMean'] = round(correction_factor_byMean, 2)
+        correction_factor = correction_data_average[ex]/correction_data_average.mean()
+        cubes[cube]['correction_factor'] = round(correction_factor, 2)
 
-        data_corrected_byMean = cubes[cube]['data'] / correction_factor_byMean
-        cubes[cube]['data_corrected_byMean'] = np.around(data_corrected_byMean, decimals = 2)
+        data_corrected = cubes[cube]['data'] / correction_factor
+        cubes[cube]['data_corrected'] = np.around(data_corrected, decimals = 2)
 
       else: print(f"Cube '{cube}' does not have a correction factor, but sometimes that's ok! ;)")
 
