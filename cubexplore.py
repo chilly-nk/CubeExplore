@@ -7,10 +7,7 @@ import matplotlib.pyplot as plt
 
 
 
-
-
-# TEST DATA
-
+"""TEST Data"""
 # Version 2024-06-24
 
 project = '/content/drive/My Drive/DATA'
@@ -45,7 +42,8 @@ real_data = {
 
 some_data = {'test': test_data, 'real': real_data}
 
-# Initial version with global variables
+# Version 2024-06-17
+
 # import inspect
 
 # # project = none
@@ -118,3 +116,5 @@ some_data = {'test': test_data, 'real': real_data}
 #     caller_globals = inspect.stack()[1][0].f_globals
 #     caller_globals['var1'] = "Hello"
 #     caller_globals['var2'] = "World"
+
+""""""
