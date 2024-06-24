@@ -3,7 +3,7 @@
 import os
 import numpy as np
 import pandas as pd
-imort seaborn as sns
+import seaborn as sns
 import matplotlib.pyplot as plt
 
 # Initiate pyimagej (at fiji mode)
