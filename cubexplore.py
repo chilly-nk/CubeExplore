@@ -9,7 +9,13 @@ import imagej
 ij = imagej.init('sc.fiji:fiji')
 
 """LOAD CUBES"""
-# Version: 2024-06-24
+# Version: 2024-06-25
+
+"""
+1. Just changed the output not to be a global variable, but ruther return a dictionary with cubes data
+2. Also to print the cube names while loading, to see progress
+3. Changed the data to be loaded as float, not int
+"""
 
 def load_cubes_im3(data_path, metadata_path = None):
 
@@ -17,8 +23,9 @@ def load_cubes_im3(data_path, metadata_path = None):
   cubes = {}
   for i in cube_names:
     # cubes[i] = tiff.imread(os.path.join(data_path, i)).transpose(1, 2, 0) # for loading cubes from 3D tiffs
+    print(f'Loading {i}...')
     img = ij.io().open(os.path.join(data_path, i))
-    cube = np.array(ij.py.from_java(img))
+    cube = np.array(ij.py.from_java(img), dtype = float)
     ex = i[:-4]
     cube_data = {
                  'ex': ex,
@@ -53,17 +60,20 @@ def load_cubes_im3(data_path, metadata_path = None):
   return cubes
 
 """PROCESS CUBES"""
-
-# Version 2024-06-24
+# Version 2024-06-25
 
 """
-Fixing data_corrected_byMean to only data_corrected, as later it is messing up things (in ROIs)
+Introducing the alter-cube processing step
 """
 
-def process_cubes(cubes, cubes_to_analyse, correction_data_path = None):
+def process_cubes(cubes, cubes_to_analyse, correction_data_path = None, alter_base = None, background_cube = None):
 
   global correction_data # might be useful to see the blip of that day
   global wavelengths_needed # just for viewing in case needed
+
+  if background_cube:
+    for cube in cubes.keys():
+      cubes[cube]['data'] = cubes[cube]['data'] - cubes[background_cube]['data']
 
   if correction_data_path:
 
@@ -92,19 +102,24 @@ def process_cubes(cubes, cubes_to_analyse, correction_data_path = None):
     correction_data = correction_data.loc[wavelengths_needed]
 
     correction_data['average'] = correction_data[measurements].mean(axis = 1)
-    correction_data_average = correction_data['average']
 
     for cube in cubes.keys():
       ex = cubes[cube]['ex']
       if ex in list(wavelengths_needed): #maybe this is odd, i don't remember, will check later
 
-        correction_factor = correction_data_average[ex]/correction_data_average.mean()
+        correction_factor = correction_data['average'][ex]/correction_data['average'].mean()
         cubes[cube]['correction_factor'] = round(correction_factor, 2)
 
         data_corrected = cubes[cube]['data'] / correction_factor
         cubes[cube]['data_corrected'] = np.around(data_corrected, decimals = 2)
 
-      else: print(f"Cube '{cube}' does not have a correction factor, but sometimes that's ok! ;)")
+      else: print(f"Cube [{cube}] does not have a correction factor, but sometimes that's ok! ;)")
+
+  if alter_base:
+    for cube in cubes_to_analyse:
+      altercube = cubes[cube]['data_corrected'] / (cubes[alter_base]['data_corrected'] + 1)
+      cubes[cube]['alter_base'] = alter_base
+      cubes[cube]['altercube'] = np.around(altercube, decimals = 4)
 
 
 """TEST DATA"""
