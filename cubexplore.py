@@ -4,9 +4,9 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-# Initiate pyimagej (at fiji mode)
-import imagej
-ij = imagej.init('sc.fiji:fiji')
+# # Initiate pyimagej (at fiji mode)
+# import imagej
+# ij = imagej.init('sc.fiji:fiji')
 
 """LOAD CUBES"""
 # Version: 2024-06-25
@@ -123,14 +123,13 @@ def process_cubes(cubes, cubes_to_analyse, correction_data_path = None, alter_ba
 
 
 """GET ROIs"""
-# Update 2024-06-20
+# Update 2024-06-26
 
 """
-- Changed the x2, y2 coordinates to be inclusive, as Nuance, when averaging, is doing that way (as yesterday found out), so that we can use these averages as Nuance libraries, later can specify with an additional argument how to do as needed
-- Added EEM calculation step, an average EEM over the pixels of defined region
+Specifying an argument for providing cubes, otherwise when imported does not work
 """
 
-def get_roi(region, cubes_to_analyse, y1, y2, x1, x2):
+def get_roi(region, cubes, cubes_to_analyse, y1, y2, x1, x2):
 
   """
   Parameters
@@ -142,6 +141,7 @@ def get_roi(region, cubes_to_analyse, y1, y2, x1, x2):
   y1, y2, x1, x2 : int
     Coordinates of the region, top-to-bottom, left-to-right wise, y2 and x2 are inclusive
   """
+  global regions
 
   try:
     regions
