@@ -184,7 +184,7 @@ def get_roi(region, cubes, cubes_to_analyse, y1, y2, x1, x2):
     wavelengths = range(start, end+1, step)
 
     # Slice each cube to the region's coordinates
-    cube_segment = cubes[cube]['data_corrected_byMean'][rows, cols, :]
+    cube_segment = cubes[cube]['data_corrected'][rows, cols, :]
 
     # Reshape each cube and get 2D data for spectra for each pixel
     cube_reshaped = cube_segment.reshape(cube_segment.shape[0] * cube_segment.shape[1], cube_segment.shape[2])
