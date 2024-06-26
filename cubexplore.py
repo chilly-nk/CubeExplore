@@ -4,9 +4,9 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-# # Initiate pyimagej (at fiji mode)
-# import imagej
-# ij = imagej.init('sc.fiji:fiji')
+# Initiate pyimagej (at fiji mode)
+import imagej
+ij = imagej.init('sc.fiji:fiji')
 
 """LOAD CUBES"""
 # Version: 2024-06-25
