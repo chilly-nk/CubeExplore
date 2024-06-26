@@ -122,6 +122,100 @@ def process_cubes(cubes, cubes_to_analyse, correction_data_path = None, alter_ba
       cubes[cube]['altercube'] = np.around(altercube, decimals = 4)
 
 
+"""GET ROIs"""
+# Update 2024-06-20
+
+"""
+- Changed the x2, y2 coordinates to be inclusive, as Nuance, when averaging, is doing that way (as yesterday found out), so that we can use these averages as Nuance libraries, later can specify with an additional argument how to do as needed
+- Added EEM calculation step, an average EEM over the pixels of defined region
+"""
+
+def get_roi(region, cubes_to_analyse, y1, y2, x1, x2):
+
+  """
+  Parameters
+  ----------
+  region : str
+    Name of the region
+  cubes_to_analyse : list
+    List of cubes to analyse
+  y1, y2, x1, x2 : int
+    Coordinates of the region, top-to-bottom, left-to-right wise, y2 and x2 are inclusive
+  """
+
+  try:
+    regions
+  except NameError:
+    regions = {}
+
+  # Store Coordinates
+  regions[region] = {}
+
+  rows = slice(y1, y2+1)
+  cols = slice(x1, x2+1)
+
+  regions[region]['rows'] = rows
+  regions[region]['cols'] = cols
+  regions[region]['rows_str'] = f'{rows.start}:{rows.stop}'
+  regions[region]['cols_str'] = f'{cols.start}:{cols.stop}'
+  regions[region]['num_pixels'] = (rows.stop - rows.start) * (cols.stop - cols.start)
+
+  # Delete
+  # rows = regions[region]['rows']
+  # cols = regions[region]['cols']
+
+  spectra_corrected = {}
+  spectra_corrected['byCube'] = {}
+  spectra_corrected['Combined'] = {}
+
+  eems_corrected = {}
+
+  ###
+  spectra = {}
+  spectrum = {}
+
+  for cube in cubes_to_analyse:
+
+    # Get wavelengths from cubes metadata
+    # This can be transferred to the cubes metadata, and later just accessed like cubes[cube]['wavelengths']
+    start = cubes[cube]['em_start']
+    end = cubes[cube]['em_end']
+    step = cubes[cube]['step']
+    wavelengths = range(start, end+1, step)
+
+    # Slice each cube to the region's coordinates
+    cube_segment = cubes[cube]['data_corrected_byMean'][rows, cols, :]
+
+    # Reshape each cube and get 2D data for spectra for each pixel
+    cube_reshaped = cube_segment.reshape(cube_segment.shape[0] * cube_segment.shape[1], cube_segment.shape[2])
+    spectra[cube] = pd.DataFrame(cube_reshaped, columns = wavelengths)
+
+    # Get the average spectra by pixels for each cube
+    cube_averaged_byPixel = np.mean(cube_segment, axis = (0, 1), keepdims = True).reshape(1, cube_segment.shape[2])
+    spectrum[cube] = pd.DataFrame(cube_averaged_byPixel, columns = wavelengths, index = [int(cubes[cube]['ex'])])
+
+    # Get EEM out of averaged (over pixels) spectra, by stacking them together
+    try:
+      eem_averaged_corrected
+    except NameError:
+      eem_averaged_corrected = pd.DataFrame(columns = wavelengths)
+
+    eem_averaged_corrected = pd.concat([eem_averaged_corrected, spectrum[cube]], axis = 0).sort_index(ascending = False)
+
+  spectra_corrected['byCube']['all'] = spectra
+  spectra_corrected['byCube']['average'] = spectrum
+
+  regions[region]['eem_averaged_corrected'] = eem_averaged_corrected
+
+  spectra_corrected['Combined']['all'] = None
+  spectra_corrected['Combined']['average'] = None
+
+  regions[region]['spectra_corrected'] = spectra_corrected
+
+  return regions
+
+
+
 """TEST DATA"""
 # Version 2024-06-24
 
@@ -157,79 +251,3 @@ real_data = {
 
 some_data = {'test': test_data, 'real': real_data}
 
-# Version 2024-06-17
-
-# import inspect
-
-# # project = none
-# # experiment = None
-# # sample = None
-# # data_path = None
-# # metadata_path = None
-# # correction_data_path = None
-
-# def some_data(which = str):
-#   caller_globals = inspect.stack()[1][0].f_globals
-
-#   if which == 'real':
-    
-#     project = '/content/drive/My Drive/DATA'
-#     experiment = 'Exp 2024-05-03 - 4D HSI Rat Tendon + Nerve'
-#     sample = 'right_leg_tendon_nerve'
-#     dataset = 'cubes'
-#     data_path = os.path.join(project, experiment, sample, dataset)
-#     metadata_path = os.path.join(project, experiment, sample, 'metadata.csv')
-#     correction_data_path = os.path.join(project, experiment, sample, 'correction_data.lnk')
-    
-#     caller_globals['project'] = project
-#     caller_globals['experiment'] = experiment
-#     caller_globals['sample'] = sample
-#     caller_globals['dataset'] = dataset
-#     caller_globals['data_path'] = data_path
-#     caller_globals['metadata_path'] = metadata_path
-#     caller_globals['correction_data_path'] = correction_data_path
-
-#   elif which == 'test':
-    
-#     project = '/content/drive/My Drive/DATA'
-#     experiment = 'Test Data' # the same with less cubes
-#     sample = 'right_leg_tendon_nerve'
-#     dataset = 'cubes'
-#     data_path = os.path.join(project, experiment, sample, dataset)
-#     metadata_path = os.path.join(project, experiment, sample, 'metadata.csv')
-#     correction_data_path = os.path.join(project, experiment, sample, 'correction_data')
-    
-#     caller_globals['project'] = project
-#     caller_globals['experiment'] = experiment
-#     caller_globals['sample'] = sample
-#     caller_globals['dataset'] = dataset
-    
-#     caller_globals['data_path'] = data_path
-#     caller_globals['metadata_path'] = metadata_path
-#     caller_globals['correction_data_path'] = correction_data_path
-
-#   print('Data:', data_path)
-#   print('Metadata:', metadata_path)
-#   print('Correction Data:', correction_data_path)
-
-
-# # def test():
-# #   globals()['testvariable'] = 'nothing'
-# #   print(testvariable)
-
-# # mymodule.py
-
-# # def define_globals():
-# #     global var1, var2
-# #     var1 = "Hello"
-# #     var2 = "World"
-
-
-# # mymodule.py
-
-# def define_globals():
-#     caller_globals = inspect.stack()[1][0].f_globals
-#     caller_globals['var1'] = "Hello"
-#     caller_globals['var2'] = "World"
-
-""""""
