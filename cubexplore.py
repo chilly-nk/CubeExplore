@@ -127,12 +127,13 @@ def process_cubes(cubes, cubes_to_analyse, correction_data_path = None, alter_ba
 
 """
 Turned the function into a class, for importing and reusing convenience
+Some uppercases to lowercases
 """
 
 class Regions():
 
   def __init__(self):
-    self.regions = {}
+    self.rois = {}
 
   def add_roi(self, region, cubes, cubes_to_analyse, y1, y2, x1, x2):
     
@@ -152,8 +153,8 @@ class Regions():
     # cols = self.regions[region]['cols']
 
     spectra_corrected = {}
-    spectra_corrected['byCube'] = {}
-    spectra_corrected['Combined'] = {}
+    spectra_corrected['bycube'] = {}
+    spectra_corrected['combined'] = {}
 
     eems_corrected = {}
 
@@ -189,16 +190,15 @@ class Regions():
 
       eem_averaged_corrected = pd.concat([eem_averaged_corrected, spectrum[cube]], axis = 0).sort_index(ascending = False)
 
-    spectra_corrected['byCube']['all'] = spectra
-    spectra_corrected['byCube']['average'] = spectrum
+    spectra_corrected['bycube']['all'] = spectra
+    spectra_corrected['bycube']['average'] = spectrum
 
     self.regions[region]['eem_averaged_corrected'] = eem_averaged_corrected
 
-    spectra_corrected['Combined']['all'] = None
-    spectra_corrected['Combined']['average'] = None
+    spectra_corrected['combined']['all'] = None
+    spectra_corrected['combined']['average'] = None
 
     self.regions[region]['spectra_corrected'] = spectra_corrected 
-
 
 
 """TEST DATA"""
