@@ -1,8 +1,6 @@
 import os
 import numpy as np
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
 
 # Initiate pyimagej (at fiji mode)
 import imagej
