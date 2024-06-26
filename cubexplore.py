@@ -131,7 +131,7 @@ Some uppercases to lowercases
 class Regions():
 
   def __init__(self):
-    self.rois = {}
+    self.regions = {}
 
   def add_roi(self, region, cubes, cubes_to_analyse, y1, y2, x1, x2):
     
@@ -145,10 +145,6 @@ class Regions():
     self.regions[region]['rows_str'] = f'{rows.start}:{rows.stop}'
     self.regions[region]['cols_str'] = f'{cols.start}:{cols.stop}'
     self.regions[region]['num_pixels'] = (rows.stop - rows.start) * (cols.stop - cols.start)
-
-    # Delete
-    # rows = self.regions[region]['rows']
-    # cols = self.regions[region]['cols']
 
     spectra_corrected = {}
     spectra_corrected['bycube'] = {}
