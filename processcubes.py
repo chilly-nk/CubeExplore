@@ -3,20 +3,23 @@ import numpy as np
 import pandas as pd
 
 """PROCESS CUBES"""
-# Version 2024-06-25
+# Version 2024-07-03
 
 """
-Introducing the alter-cube processing step
+Completing background_cube processing step, to remove also negative numbers
 """
 
-def process_cubes(cubes, cubes_to_analyse, correction_data_path = None, alter_base = None, background_cube = None):
+def process_cubes(cubes, cubes_to_analyse, correction_data_path = None, background_cube = None, alter_base = None):
 
   global correction_data # might be useful to see the blip of that day
   global wavelengths_needed # just for viewing in case needed
 
   if background_cube:
     for cube in cubes.keys():
-      cubes[cube]['data'] = cubes[cube]['data'] - cubes[background_cube]['data']
+      cube_wobgr = cubes[cube]['data'] - cubes[background_cube]['data']
+      negatives = (cube_wobgr < 0)
+      cube_wobgr[negatives] = 0
+      cubes[cube]['data_wobgr'] = cube_wobgr
 
   if correction_data_path:
 
@@ -53,10 +56,10 @@ def process_cubes(cubes, cubes_to_analyse, correction_data_path = None, alter_ba
         correction_factor = correction_data['average'][ex]/correction_data['average'].mean()
         cubes[cube]['correction_factor'] = round(correction_factor, 2)
 
-        data_corrected = cubes[cube]['data'] / correction_factor
+        data_corrected = cubes[cube]['data_wobgr'] / correction_factor
         cubes[cube]['data_corrected'] = np.around(data_corrected, decimals = 2)
 
-      else: print(f"Cube [{cube}] does not have a correction factor, but sometimes that's ok! ;)")
+      else: print(f"Cube '{cube}' does not have a correction factor, but sometimes that's ok! ;)")
 
   if alter_base:
     for cube in cubes_to_analyse:
