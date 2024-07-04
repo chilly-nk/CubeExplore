@@ -21,8 +21,7 @@ def process_cubes(cubes, cubes_to_analyse, correction_data_path = None, backgrou
       negatives = (cube_wobgr < 0)
       cube_wobgr[negatives] = 0
       cubes[cube]['data_wobgr'] = cube_wobgr
-
-  print('Background subtraction done.\n--------------------------------')
+    print('Background subtraction done.\n--------------------------------')
 
   for cube in cubes_to_analyse:
     print(f"Normalizing cube '{cube}'...")
@@ -31,8 +30,8 @@ def process_cubes(cubes, cubes_to_analyse, correction_data_path = None, backgrou
     else:
       cube_normalized = cubes[cube]['data'] / (np.max(cubes[cube]['data'], axis = 2, keepdims = True) + np.finfo(float).eps)
     cubes[cube]['cube_norm_bymax'] = cube_normalized
-
-  print('Normalization by max for cubes done.\n--------------------------------')
+    
+    print('Normalization by max for cubes done.\n--------------------------------')
 
   if correction_data_path:
     print("Doing correction of cubes...")
