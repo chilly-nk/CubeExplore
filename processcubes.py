@@ -16,21 +16,27 @@ def process_cubes(cubes, cubes_to_analyse, correction_data_path = None, backgrou
   
   if background_cube:
     for cube in cubes_to_analyse:
-      print(f"Subtracting background from {cube}")
+      print(f"Subtracting background from '{cube}'...")
       cube_wobgr = cubes[cube]['data'] - cubes[background_cube]['data']
-      negatives = (cube_wobgr <= 0)
+      negatives = (cube_wobgr < 0)
       cube_wobgr[negatives] = 0
       cubes[cube]['data_wobgr'] = cube_wobgr
 
+  print('Background subtraction done.\n--------------------------------')
+
   for cube in cubes_to_analyse:
+    print(f"Normalizing cube '{cube}'...")
     if background_cube:
-      cube_normalized = cubes[cube]['data_wobgr'] / (np.max(cubes[cube]['data_wobgr'] + np.finfo(float).eps), axis = 2, keepdims = True)
+      cube_normalized = cubes[cube]['data_wobgr'] / (np.max(cubes[cube]['data_wobgr'], axis = 2, keepdims = True) + np.finfo(float).eps)
     else:
-      cube_normalized = cubes[cube]['data'] / (np.max(cubes[cube]['data'] + np.finfo(float).eps), axis = 2, keepdims = True)
+      cube_normalized = cubes[cube]['data'] / (np.max(cubes[cube]['data'], axis = 2, keepdims = True) + np.finfo(float).eps)
     cubes[cube]['cube_norm_bymax'] = cube_normalized
 
-  if correction_data_path:
+  print('Normalization by max for cubes done.\n--------------------------------')
 
+  if correction_data_path:
+    print("Doing correction of cubes...")
+    
     # Load Correction Data (TLS Basic Wavelength Scan, several scans repetitions). All scans must have the same start, stop, step
     file_num = [int(filename[:-4]) for filename in os.listdir(correction_data_path)]
     anyfile_for_wavelengths = 1
