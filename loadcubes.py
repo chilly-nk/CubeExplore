@@ -6,7 +6,6 @@ import pandas as pd
 import imagej
 ij = imagej.init('sc.fiji:fiji')
 
-"""LOAD CUBES"""
 # Version: 2024-07-04
 
 """
