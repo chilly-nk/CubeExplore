@@ -56,3 +56,14 @@ class Cubes:
         exp = metadata.loc[ex, 'exp']
         self.metadata[cube]['expos_val'] = float(exp) if str(exp).isdigit() else exp
         self.metadata[cube]['notes'] = metadata.loc[ex, 'notes']
+
+  def process(self, cubes_to_analyse, background_cube = None, correction_data = None):
+    self.processed = {}
+    if background_cube:
+      for cube in cubes_to_analyse:
+        print(f"Subtracting background from '{cube}'...")
+        cube_subtracted = self.raw[cube] - self.raw[background_cube]
+        negatives = (cube_subtracted < 0)
+        cube_subtracted[negatives] = 0
+        self.processed[cube] = cube_subtracted
+      print('Background subtraction done.\n See subtracted cubes in cubes.processed attribute.\n--------------------------------')
