@@ -9,7 +9,7 @@ ij = imagej.init('sc.fiji:fiji')
 
 class Cubes:
   
-  def __init__(self, data_path, metadata_path = None, cubes_to_analyse = None):
+  def __init__(self, data_path, metadata_path = None, cubes_to_load = None):
     
     self.last_loaded = datetime.datetime.now()
     
@@ -17,8 +17,8 @@ class Cubes:
     self.metadata = {}
     self.processed = {}
     
-    if cubes_to_analyse:
-      cube_names = cubes_to_analyse
+    if cubes_to_load:
+      cube_names = cubes_to_load
     else:
       cube_names = sorted(os.listdir(data_path))
     
