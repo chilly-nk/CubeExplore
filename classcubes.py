@@ -2,6 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 import datetime
+import matplotlib.pyplot as plt
 
 # Initiate pyimagej (at fiji mode)
 import imagej
@@ -127,3 +128,46 @@ class Cubes:
 
       print('Correction of cubes done. See corrected cubes in cubes.processed attribute.\n--------------------------------')
     else: print('Attention! No data correction took place.\n--------------------------------') 
+
+  def view(self, cube_to_view: str, y1 = None, y2 = None, x1 = None, x2 = None, blue_bands = range(3, 9), green_bands = range(13, 19), red_bands = range(23, 29)):
+    cube = self.raw[cube_to_view]
+
+    # Extract data for each channel
+    red_data = np.mean(cube[:, :, red_bands], axis=-1)
+    green_data = np.mean(cube[:, :, green_bands], axis=-1)
+    blue_data = np.mean(cube[:, :, blue_bands], axis=-1)
+
+    # Normalize the data to [0, 1]
+    normalized_red = (red_data - np.min(red_data)) / (np.max(red_data) - np.min(red_data))
+    normalized_green = (green_data - np.min(green_data)) / (np.max(green_data) - np.min(green_data))
+    normalized_blue = (blue_data - np.min(blue_data)) / (np.max(blue_data) - np.min(blue_data))
+
+    # Stack the channels to create an RGB image
+    rgb_image = np.stack([normalized_red, normalized_green, normalized_blue], axis=-1)  
+
+    # Display the RGB image
+    plt.figure(figsize = (10, 10))
+    ax = plt.imshow(rgb_image);
+    
+    # Set the boundaries
+    coords = [y1, y2, x1, x2]
+    if all(coords):
+      plt.axvline(x = x1, color = 'red', linewidth = 0.5, linestyle = '--');
+      plt.axvline(x = x2, color = 'red', linewidth = 0.5, linestyle = '--');
+      plt.axhline(y = y1, color = 'red', linewidth = 0.5, linestyle = '--');
+      plt.axhline(y = y2, color = 'red', linewidth = 0.5, linestyle = '--');
+    
+      self.selected_rows = slice(min(y1, y2), max(y1, y2)+1)
+      self.selected_cols = slice(min(x1, x2), max(x1, x2)+1)
+    # elif any(coords):
+    #   coords_dict = {
+    #     'y1': y1,
+    #     'y2': y2,
+    #     'x1': x1,
+    #     'x2': x2,
+    #   }
+    #   not_provided = [key for key, value in coords_dict.items() if value is None]
+    #   print(f"{not_provided} not provided")
+    # else: print('No coordinates provided for defining a region.\nIf you want you can provide y1, y2, x1, x2.')
+    
+    plt.show()
