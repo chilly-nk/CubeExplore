@@ -17,6 +17,7 @@ class Cubes:
     self.raw = {}
     self.metadata = {}
     self.processed = {}
+    self.normalized = {}
     
     if cubes_to_load:
       cube_names = cubes_to_load
@@ -171,3 +172,37 @@ class Cubes:
     # else: print('No coordinates provided for defining a region.\nIf you want you can provide y1, y2, x1, x2.')
     
     plt.show()
+
+  def crop(self, y1 = None, y2 = None, x1 = None, x2 = None):
+    coords = [y1, y2, x1, x2]
+    if all(coord is None for coord in coords):
+      try:
+        rows = self.selected_rows
+        cols = self.selected_cols
+      except:
+        print("Oops! Seems you haven't specified any coordinates.")
+    elif all(coords):
+      rows = slice(min(y1, y2), max(y1, y2)+1)
+      cols = slice(min(x1, x2), max(x1, x2)+1)
+    else:
+      print('Oops! Seems you have missed some of the coordinates (y1, y2, x1, x2).')
+
+    for cubename in self.raw.keys():
+      cube = self.raw[cubename]
+      cube_cropped = cube[rows, cols, :]
+      self.raw[cubename] = cube_cropped
+      self.metadata[cubename]['num_rows'] = cube_cropped.shape[0]
+      self.metadata[cubename]['num_cols'] = cube_cropped.shape[1]
+
+    if self.processed:
+      for cubename in self.processed.keys():
+        cube = self.processed[cubename]
+        cube_cropped = cube[rows, cols, :]
+        self.processed[cubename] = cube_cropped
+
+    if self.normalized:
+      for cubename in self.normalized.keys():
+        cube = self.normalized[cubename]
+        cube_cropped = cube[rows, cols, :]
+        self.normalized[cubename] = cube_cropped
+    
