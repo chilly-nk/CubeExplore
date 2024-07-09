@@ -3,6 +3,9 @@ import numpy as np
 import pandas as pd
 import datetime
 import matplotlib.pyplot as plt
+import pickle
+import pytz
+from datetime import datetime
 from sklearn.decomposition import PCA
 
 # Initiate pyimagej (at fiji mode)
@@ -13,7 +16,9 @@ class Cubes:
   
   def __init__(self, data_path, metadata_path = None, cubes_to_load = None):
     
-    self.last_loaded = datetime.datetime.now()
+    yerevantime = pytz.timezone('Asia/Yerevan')
+    time = datetime.now().astimezone(yerevantime).strftime('%Y-%m-%d %H:%M:%S')
+    self.last_loaded = time
     
     self.raw = {}
     self.metadata = {}
@@ -239,4 +244,16 @@ class Cubes:
       else:
         self.pcs_bycube[cubename] = PCs
 
-  # def save_asfile(self, filename = 'cubes')
+  def normalize(self, which = 'processed'):
+    data_to_process = getattr(self, which)
+    for cubename in data_to_process.keys():
+      cube = data_to_process[cubename]
+      cube_max = np.max(cube, axis = 2, keepdims = True) + np.finfo(float).eps
+      cube_normalized = cube / cube_max
+      self.normalized[cubename] = cube_normalized
+
+  # This doesn't work yet
+  # def savefile(self, name = 'cubes', path = str):
+  #   filepath = os.path.join(path, name + '.pkl')
+  #   with open(filepath, 'wb') as file:
+  #     pickle.dump(self, file)
