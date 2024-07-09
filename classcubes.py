@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import datetime
 import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
 
 # Initiate pyimagej (at fiji mode)
 import imagej
@@ -17,7 +18,14 @@ class Cubes:
     self.raw = {}
     self.metadata = {}
     self.processed = {}
-    self.normalized = {}
+    self.normalized = {} # Not ready yet
+    self.combined = None # Not ready yet
+
+    self.selected_rows = None
+    self.selected_cols = None
+    
+    self.pcs_bycube = {}
+    self.pcs_bycube_transformed = {}
     
     if cubes_to_load:
       cube_names = cubes_to_load
@@ -112,7 +120,7 @@ class Cubes:
 
       self.cubes_to_correct = cubes_to_correct
       for cube in cubes_to_correct:
-        print(f"Correction of cube '{cube}'...")
+        print(f"Correcting cube '{cube}'...")
         ex = self.metadata[cube]['ex']
         if ex in list(wavelengths_needed): #maybe this is odd, i don't remember, will check later
 
@@ -151,8 +159,8 @@ class Cubes:
     ax = plt.imshow(rgb_image);
     
     # Set the boundaries
-    coords = [y1, y2, x1, x2]
-    if all(coords):
+    coords = pd.Series([y1, y2, x1, x2])
+    if coords.notna().all():
       plt.axvline(x = x1, color = 'red', linewidth = 0.5, linestyle = '--');
       plt.axvline(x = x2, color = 'red', linewidth = 0.5, linestyle = '--');
       plt.axhline(y = y1, color = 'red', linewidth = 0.5, linestyle = '--');
@@ -205,4 +213,30 @@ class Cubes:
         cube = self.normalized[cubename]
         cube_cropped = cube[rows, cols, :]
         self.normalized[cubename] = cube_cropped
-    
+
+  def reshape_bycube(self, which_data = 'processed'):
+    data_to_process = getattr(self, which_data)
+    self.reshaped_bycube_input = which_data
+    for cubename in data_to_process.keys():
+      cube = data_to_process[cubename]
+      cube_reshaped = np.reshape(cube, (cube.shape[0]*cube.shape[1], cube.shape[2]))
+      self.reshaped[cubename] = cube_reshaped
+
+  def get_pcs_bycube(self, components = 3, which_data = 'processed', extra_transform = True, trans_factor = 0.5, trans_inplace = False):
+    data_to_process = getattr(self, which_data)
+    for cubename in data_to_process:
+      cube = data_to_process[cubename]
+      cube_reshaped = cube.reshape(cube.shape[0]*cube.shape[1], cube.shape[2]).astype(np.float64)
+      pca = PCA(n_components = components)
+      PCs = pca.fit_transform(cube_reshaped)
+      
+      if extra_transform == True:
+        PCs_transformed = np.sign(PCs) * np.abs(PCs) ** trans_factor
+        self.pcs_bycube_transformed[cubename] = PCs_transformed
+      
+      if trans_inplace == True:
+        continue
+      else:
+        self.pcs_bycube[cubename] = PCs
+
+  # def save_asfile(self, filename = 'cubes')
