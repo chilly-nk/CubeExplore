@@ -2,6 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 import datetime
+import seaborn as sns
 import matplotlib.pyplot as plt
 import pickle
 import pytz
@@ -20,6 +21,7 @@ class Cubes:
     yerevantime = pytz.timezone('Asia/Yerevan')
     time = datetime.now().astimezone(yerevantime).strftime('%Y-%m-%d %H:%M:%S')
     self.last_loaded = time
+    self.data_source = data_source
     
     self.raw = {}
     self.metadata = {}
@@ -37,6 +39,7 @@ class Cubes:
       cube_names = cubes_to_load
     else:
       cube_names = sorted(os.listdir(data_path))
+    self.names = cube_names
     
     for cubename in cube_names:
       # cubes[i] = tiff.imread(os.path.join(data_path, i)).transpose(1, 2, 0) # for loading cubes from 3D tiffs
@@ -153,7 +156,14 @@ class Cubes:
     else: print('Attention! No data correction took place.\n--------------------------------') 
 
   def view(self, cube_to_view: str, y1 = None, y2 = None, x1 = None, x2 = None, blue_bands = range(3, 9), green_bands = range(13, 19), red_bands = range(23, 29)):
+    
     cube = self.raw[cube_to_view]
+    
+    if self.data_source == 'goldeneye' or self.data_source == 'snapshot':
+      blue_bands = range(11, 21)
+      green_bands = range(32, 42)
+      red_bands = range(52, 62)
+    # But what if you want to provide bands even when its 'snapshot'. They will be overwritten here. Need to fix this.
 
     # Extract data for each channel
     red_data = np.mean(cube[:, :, red_bands], axis=-1)
@@ -260,6 +270,25 @@ class Cubes:
       cube_max = np.max(cube, axis = 2, keepdims = True) + np.finfo(float).eps
       cube_normalized = cube / cube_max
       self.normalized[cubename] = cube_normalized
+
+  def quick_eem(self, cubes_to_analyse = None, which_from = 'processed'):
+    
+    data_to_process = getattr(self, which_from)
+    if cubes_to_analyse:
+      cube_names = cubes_to_analyse
+    else:
+      cube_names = self.names
+
+    rows = self.selected_rows
+    cols = self.selected_cols
+    eem = pd.DataFrame()
+    for cubename in cube_names:
+      cube_segment = data_to_process[cubename][rows, cols, :]
+      cube_segment_avg = np.mean(cube_segment, axis = (0, 1), keepdims = True).reshape(1, cube_segment.shape[2])
+      spectrum = pd.DataFrame(cube_segment_avg)
+      eem = pd.concat([eem, spectrum], axis = 0)
+    sns.heatmap(eem, cmap = 'coolwarm')
+
 
   # This doesn't work yet
   # def savefile(self, name = 'cubes', path = str):
