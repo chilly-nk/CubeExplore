@@ -5,6 +5,8 @@ import datetime
 import matplotlib.pyplot as plt
 import pickle
 import pytz
+import spectral as spy
+import spectral.io.envi as envi
 from datetime import datetime
 from sklearn.decomposition import PCA
 
@@ -13,8 +15,7 @@ import imagej
 ij = imagej.init('sc.fiji:fiji')
 
 class Cubes:
-  
-  def __init__(self, data_path, metadata_path = None, cubes_to_load = None):
+  def __init__(self, data_path, metadata_path = None, cubes_to_load = None, data_source = 'nuance'):
     
     yerevantime = pytz.timezone('Asia/Yerevan')
     time = datetime.now().astimezone(yerevantime).strftime('%Y-%m-%d %H:%M:%S')
@@ -37,14 +38,22 @@ class Cubes:
     else:
       cube_names = sorted(os.listdir(data_path))
     
-    for i in cube_names:
+    for cubename in cube_names:
       # cubes[i] = tiff.imread(os.path.join(data_path, i)).transpose(1, 2, 0) # for loading cubes from 3D tiffs
-      print(f'Loading {i}...')
-      img = ij.io().open(os.path.join(data_path, i))
-      cube = np.array(ij.py.from_java(img), dtype = np.float32)
-      self.raw[i] = cube
+      print(f'Loading {cubename}...')
+      if data_source == 'nuance':
+        img = ij.io().open(os.path.join(data_path, cubename))
+        img_loaded = ij.py.from_java(img)
+      elif data_source == 'goldeneye' or data_source == 'snapshot':
+        header_file = os.path.join(data_path, cubename,  'spectral_image_processed_image.hdr')
+        data_file = os.path.join(data_path, cubename, 'spectral_image_processed_image.bin')
+        img = envi.open(header_file, data_file)
+        img_loaded = img.load()
+      cube = np.array(img_loaded, dtype = np.float32)
       
-      ex = i[:-4]
+      self.raw[cubename] = cube
+      
+      ex = cubename[:-4]
       md = {'ex': ex,
             'em_start': None,
             'em_end': None,
@@ -56,7 +65,7 @@ class Cubes:
             'notes': None,
             }
 
-      self.metadata[i] = md
+      self.metadata[cubename] = md
 
     if metadata_path:
       metadata = pd.read_csv(metadata_path)
@@ -64,18 +73,18 @@ class Cubes:
       metadata.set_index('excitation', inplace = True)
       self.metadata_df = metadata
       
-      for cube in self.metadata.keys():
-        ex = cube[:-4]
-        self.metadata[cube]['ex'] = round(float(ex), 1) if ex.isdigit() else ex
+      for cubename in self.metadata.keys():
+        ex = cubename[:-4]
+        self.metadata[cubename]['ex'] = round(float(ex), 1) if ex.isdigit() else ex
         if ex not in metadata.index:
-          print(f"Attention! Cube '{ex}' is not provided with metadata by the user.")
+          print(f"Attention! User has not provided metadata for cube '{ex}'.")
           continue
-        self.metadata[cube]['em_start'] = int(metadata.loc[ex, 'emission_start'])
-        self.metadata[cube]['em_end'] = int(metadata.loc[ex, 'emission_end'])
-        self.metadata[cube]['step'] = int(metadata.loc[ex, 'step'])
+        self.metadata[cubename]['em_start'] = int(metadata.loc[ex, 'emission_start'])
+        self.metadata[cubename]['em_end'] = int(metadata.loc[ex, 'emission_end'])
+        self.metadata[cubename]['step'] = int(metadata.loc[ex, 'step'])
         exp = metadata.loc[ex, 'exp']
-        self.metadata[cube]['expos_val'] = float(exp) if str(exp).isdigit() else exp
-        self.metadata[cube]['notes'] = metadata.loc[ex, 'notes']
+        self.metadata[cubename]['expos_val'] = float(exp) if str(exp).isdigit() else exp
+        self.metadata[cubename]['notes'] = metadata.loc[ex, 'notes']
 
   def process(self, cubes_to_analyse, background_cube = None, correction_data_path = None):
     if background_cube:
