@@ -48,9 +48,10 @@ class Cubes:
         img = ij.io().open(os.path.join(data_path, cubename))
         img_loaded = ij.py.from_java(img)
       elif data_source == 'goldeneye' or data_source == 'snapshot':
-        header_file = os.path.join(data_path, cubename,  'spectral_image_processed_image.hdr')
-        data_file = os.path.join(data_path, cubename, 'spectral_image_processed_image.bin')
-        wavelengths_file = os.path.join(data_path, cubename, 'spectral_image_wavelengths.csv')
+        basename = cubename.split("_")[0].split(".")[0]
+        header_file = os.path.join(data_path, cubename,  f'{basename}_processed_image.hdr')
+        data_file = os.path.join(data_path, cubename, f'{basename}_processed_image.bin')
+        wavelengths_file = os.path.join(data_path, cubename, f'{basename}_wavelengths.csv')
         wavelengths = round(pd.read_csv(wavelengths_file).T.reset_index().T.astype(float).reset_index(drop = True)).astype(int)
         img = envi.open(header_file, data_file)
         img_loaded = img.load()
@@ -58,7 +59,7 @@ class Cubes:
       
       self.raw[cubename] = cube
       
-      ex = cubename[:-4]
+      ex = cubename.split("_")[0].split(".")[0]
       md = {'ex': ex,
             'em_start': None,
             'em_end': None,
@@ -80,7 +81,7 @@ class Cubes:
       self.metadata_df = metadata
       
       for cubename in self.metadata.keys():
-        ex = cubename[:-4]
+        ex = self.metadata[cubename]['ex']
         self.metadata[cubename]['ex'] = round(float(ex), 1) if ex.isdigit() else ex
         if ex not in metadata.index:
           print(f"Attention! User has not provided metadata for cube '{ex}'.")
@@ -288,10 +289,15 @@ class Cubes:
     for cubename in cube_names:
       cube_segment = data_to_process[cubename][rows, cols, :]
       cube_segment_avg = np.mean(cube_segment, axis = (0, 1), keepdims = True).reshape(1, cube_segment.shape[2])
+      ex = pd.Series(self.metadata[cubename]['ex'])
       wavelengths = self.metadata[cubename]['wavelengths']
-      spectrum_df = pd.DataFrame(cube_segment_avg, columns = wavelengths)
+      spectrum_df = pd.DataFrame(cube_segment_avg, columns = wavelengths, index = ex)
       eem = pd.concat([eem, spectrum_df], axis = 0)
+    eem = eem.sort_index(ascending = False)
+    self.last_eem = eem
     sns.heatmap(eem, cmap = 'coolwarm')
+    plt.xticks(rotation = 45)
+    plt.yticks(rotation = 0)
 
 
   # This doesn't work yet
