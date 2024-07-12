@@ -50,6 +50,8 @@ class Cubes:
       elif data_source == 'goldeneye' or data_source == 'snapshot':
         header_file = os.path.join(data_path, cubename,  'spectral_image_processed_image.hdr')
         data_file = os.path.join(data_path, cubename, 'spectral_image_processed_image.bin')
+        wavelengths_file = os.path.join(data_path, cubename, 'spectral_image_wavelengths.csv')
+        wavelengths = round(pd.read_csv(wavelengths_file).T.reset_index().T.astype(float).reset_index(drop = True)).astype(int)
         img = envi.open(header_file, data_file)
         img_loaded = img.load()
       cube = np.array(img_loaded, dtype = np.float32)
@@ -66,6 +68,7 @@ class Cubes:
             'num_bands': cube.shape[2],
             'expos_val': None,
             'notes': None,
+            'wavelengths': np.array(wavelengths[0]) if wavelengths is not None else None,
             }
 
       self.metadata[cubename] = md
@@ -285,8 +288,9 @@ class Cubes:
     for cubename in cube_names:
       cube_segment = data_to_process[cubename][rows, cols, :]
       cube_segment_avg = np.mean(cube_segment, axis = (0, 1), keepdims = True).reshape(1, cube_segment.shape[2])
-      spectrum = pd.DataFrame(cube_segment_avg)
-      eem = pd.concat([eem, spectrum], axis = 0)
+      wavelengths = self.metadata[cubename]['wavelengths']
+      spectrum_df = pd.DataFrame(cube_segment_avg, columns = wavelengths)
+      eem = pd.concat([eem, spectrum_df], axis = 0)
     sns.heatmap(eem, cmap = 'coolwarm')
 
 
