@@ -43,7 +43,7 @@ class Cubes:
     
     for cubename in cube_names:
       # cubes[i] = tiff.imread(os.path.join(data_path, i)).transpose(1, 2, 0) # for loading cubes from 3D tiffs
-      print(f'Loading {cubename}...')
+      print(f"Loading '{cubename}'...")
       if data_source == 'nuance':
         img = ij.io().open(os.path.join(data_path, cubename))
         img_loaded = ij.py.from_java(img)
@@ -83,7 +83,7 @@ class Cubes:
       
       for cubename in self.metadata.keys():
         ex = self.metadata[cubename]['ex']
-        self.metadata[cubename]['ex'] = ex # round(float(ex), 1) if ex.isdigit() else ex
+        # self.metadata[cubename]['ex'] = round(float(ex), 1) if ex.isdigit() else ex
         if ex not in metadata.index:
           print(f"Attention! User has not provided metadata for cube '{ex}'.")
           continue
@@ -302,8 +302,8 @@ class Cubes:
     self.last_eem = eem
     sns.heatmap(eem, cmap = 'coolwarm')
     plt.title('Average EEM of Selected Region')
-    plt.xlabel('Em.')
-    plt.ylabel('Ex.')
+    plt.xlabel('Emission')
+    plt.ylabel('Excitation')
     plt.xticks(rotation = 45)
     plt.yticks(rotation = 0)
 
