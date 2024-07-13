@@ -36,7 +36,7 @@ class Cubes:
     self.pcs_bycube_transformed = {}
     
     if cubes_to_load:
-      cube_names = cubes_to_load
+      cube_names = sorted(cubes_to_load)
     else:
       cube_names = sorted(os.listdir(data_path))
     self.names = cube_names
@@ -53,6 +53,7 @@ class Cubes:
         data_file = os.path.join(data_path, cubename, f'{basename}_processed_image.bin')
         wavelengths_file = os.path.join(data_path, cubename, f'{basename}_wavelengths.csv')
         wavelengths = round(pd.read_csv(wavelengths_file).T.reset_index().T.astype(float).reset_index(drop = True)).astype(int)
+        wavelengths = np.array(wavelengths[0])
         img = envi.open(header_file, data_file)
         img_loaded = img.load()
       cube = np.array(img_loaded, dtype = np.float32)
@@ -69,7 +70,7 @@ class Cubes:
             'num_bands': cube.shape[2],
             'expos_val': None,
             'notes': None,
-            'wavelengths': np.array(wavelengths[0]) if wavelengths is not None else None,
+            'wavelengths': wavelengths if 'wavelengths' in locals() else None,
             }
 
       self.metadata[cubename] = md
@@ -86,12 +87,16 @@ class Cubes:
         if ex not in metadata.index:
           print(f"Attention! User has not provided metadata for cube '{ex}'.")
           continue
-        self.metadata[cubename]['em_start'] = int(metadata.loc[ex, 'emission_start'])
-        self.metadata[cubename]['em_end'] = int(metadata.loc[ex, 'emission_end'])
-        self.metadata[cubename]['step'] = int(metadata.loc[ex, 'step'])
+        em_start = int(metadata.loc[ex, 'emission_start'])
+        em_end = int(metadata.loc[ex, 'emission_end'])
+        step = int(metadata.loc[ex, 'step'])
+        self.metadata[cubename]['em_start'] = em_start
+        self.metadata[cubename]['em_end'] = em_end
+        self.metadata[cubename]['step'] = step
         exp = metadata.loc[ex, 'exp']
         self.metadata[cubename]['expos_val'] = float(exp) if str(exp).isdigit() else exp
         self.metadata[cubename]['notes'] = metadata.loc[ex, 'notes']
+        self.metadata[cubename]['wavelengths'] = np.array(range(em_start, em_end+1, step))
 
   def process(self, cubes_to_analyse, background_cube = None, correction_data_path = None):
     if background_cube:
@@ -289,13 +294,16 @@ class Cubes:
     for cubename in cube_names:
       cube_segment = data_to_process[cubename][rows, cols, :]
       cube_segment_avg = np.mean(cube_segment, axis = (0, 1), keepdims = True).reshape(1, cube_segment.shape[2])
-      ex = pd.Series(self.metadata[cubename]['ex'])
+      ex = pd.Series(str(self.metadata[cubename]['ex']))
       wavelengths = self.metadata[cubename]['wavelengths']
       spectrum_df = pd.DataFrame(cube_segment_avg, columns = wavelengths, index = ex)
       eem = pd.concat([eem, spectrum_df], axis = 0)
     eem = eem.sort_index(ascending = False)
     self.last_eem = eem
     sns.heatmap(eem, cmap = 'coolwarm')
+    plt.title('Average EEM of Selected Region')
+    plt.xlabel('Em.')
+    plt.ylabel('Ex.')
     plt.xticks(rotation = 45)
     plt.yticks(rotation = 0)
 
