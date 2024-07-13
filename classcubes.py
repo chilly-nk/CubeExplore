@@ -83,7 +83,7 @@ class Cubes:
       
       for cubename in self.metadata.keys():
         ex = self.metadata[cubename]['ex']
-        self.metadata[cubename]['ex'] = round(float(ex), 1) if ex.isdigit() else ex
+        self.metadata[cubename]['ex'] = ex # round(float(ex), 1) if ex.isdigit() else ex
         if ex not in metadata.index:
           print(f"Attention! User has not provided metadata for cube '{ex}'.")
           continue
