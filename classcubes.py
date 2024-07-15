@@ -164,7 +164,7 @@ class Cubes:
       print('Correction of cubes done. See corrected cubes in cubes.processed attribute.\n--------------------------------')
     else: print('Attention! No data correction took place.\n--------------------------------') 
 
-  def view(self, cube_to_view: str, y1 = None, y2 = None, x1 = None, x2 = None, blue_bands = range(3, 9), green_bands = range(13, 19), red_bands = range(23, 29)):
+  def view(self, cube_to_view: str, y1 = None, y2 = None, x1 = None, x2 = None, blue_bands = range(3, 9), green_bands = range(13, 19), red_bands = range(23, 29), ax = None):
     
     cube = self.raw[cube_to_view]
     
@@ -188,16 +188,19 @@ class Cubes:
     rgb_image = np.stack([normalized_red, normalized_green, normalized_blue], axis=-1)  
 
     # Display the RGB image
-    # plt.figure(figsize = (10, 10))
-    ax = plt.imshow(rgb_image);
+    if ax is None:
+      fig, ax = plt.subplots()
+    else:
+      ax = ax
+    ax.imshow(rgb_image);
     
     # Set the boundaries
     coords = pd.Series([y1, y2, x1, x2])
     if coords.notna().all():
-      plt.axvline(x = x1, color = 'red', linewidth = 0.5, linestyle = '--');
-      plt.axvline(x = x2, color = 'red', linewidth = 0.5, linestyle = '--');
-      plt.axhline(y = y1, color = 'red', linewidth = 0.5, linestyle = '--');
-      plt.axhline(y = y2, color = 'red', linewidth = 0.5, linestyle = '--');
+      ax.axvline(x = x1, color = 'blue', linewidth = 0.7, linestyle = '--');
+      ax.axvline(x = x2, color = 'blue', linewidth = 0.7, linestyle = '--');
+      ax.axhline(y = y1, color = 'blue', linewidth = 0.7, linestyle = '--');
+      ax.axhline(y = y2, color = 'blue', linewidth = 0.7, linestyle = '--');
     
       self.selected_rows = slice(min(y1, y2), max(y1, y2)+1)
       self.selected_cols = slice(min(x1, x2), max(x1, x2)+1)
@@ -280,7 +283,7 @@ class Cubes:
       cube_normalized = cube / cube_max
       self.normalized[cubename] = cube_normalized
 
-  def quick_eem(self, cubes_to_analyse = None, which_from = 'processed'):
+  def quick_eem(self, cubes_to_analyse = None, which_from = 'processed', ax = None, vmin = None, vmax = None):
     
     data_to_process = getattr(self, which_from)
     if cubes_to_analyse:
@@ -300,7 +303,11 @@ class Cubes:
       eem = pd.concat([eem, spectrum_df], axis = 0)
     eem = eem.sort_index(ascending = False)
     self.last_eem = eem
-    sns.heatmap(eem, cmap = 'coolwarm')
+    if ax is None:
+      fig, ax = plt.subplots()
+    else:
+      ax = ax
+    sns.heatmap(eem, cmap = 'coolwarm', ax = ax, vmin = vmin, vmax = vmax)
     plt.title('Average EEM of Selected Region')
     plt.xlabel('Emission')
     plt.ylabel('Excitation')
