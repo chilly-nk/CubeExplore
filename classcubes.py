@@ -132,7 +132,7 @@ class Cubes:
       correction_data.set_index(keys = 'wavelength', inplace = True)
 
       # Select only those wavelengths which are corresponding to our cubes of interest
-      wavelengths_needed = [self.metadata[cube]['ex'] for cube in cubes_to_analyse if self.metadata[cube]['ex'] in list(wavelengths)]
+      wavelengths_needed = [float(self.metadata[cube]['ex']) for cube in cubes_to_analyse if float(self.metadata[cube]['ex']) in list(wavelengths)]
       correction_data = correction_data.loc[wavelengths_needed]
 
       correction_data['average'] = correction_data[measurements].mean(axis = 1)
@@ -147,7 +147,7 @@ class Cubes:
       self.cubes_to_correct = cubes_to_correct
       for cube in cubes_to_correct:
         print(f"Correcting cube '{cube}'...")
-        ex = self.metadata[cube]['ex']
+        ex = float(self.metadata[cube]['ex'])
         if ex in list(wavelengths_needed): #maybe this is odd, i don't remember, will check later
 
           correction_factor = correction_data['average'][ex]/correction_data['average'].mean()
@@ -188,7 +188,7 @@ class Cubes:
     rgb_image = np.stack([normalized_red, normalized_green, normalized_blue], axis=-1)  
 
     # Display the RGB image
-    plt.figure(figsize = (10, 10))
+    # plt.figure(figsize = (10, 10))
     ax = plt.imshow(rgb_image);
     
     # Set the boundaries
