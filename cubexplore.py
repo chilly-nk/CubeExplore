@@ -27,8 +27,12 @@ class Cubes:
     self.raw = {}
     self.metadata = {}
     self.processed = {}
-    self.normalized = {} # Not ready yet
-    self.combined = None # Not ready yet
+    self.normalized = {}
+    
+    self.combined = None
+    self.combined_wavelengths = np.empty((0), dtype = np.int64)
+    self.combined_which = None
+    self.combined_names = None
 
     self.selected_rows = None
     self.selected_cols = None
@@ -314,6 +318,24 @@ class Cubes:
     plt.ylabel('Excitation')
     plt.xticks(rotation = 45)
     plt.yticks(rotation = 0)
+
+  def combine(self, cubes_to_analyse = None, which_data = 'processed'):
+    data_to_process = getattr(self, which_data)
+    if cubes_to_analyse:
+      cube_names = cubes_to_analyse
+    else:
+      cube_names = data_to_process.keys()
+
+    for cubename in cube_names:
+      print(f"Getting '{cubename}")
+      cube = data_to_process[cubename]
+      wavelengths = self.metadata[cubename]['wavelengths']
+      if self.combined is None:
+        self.combined = np.empty((cube.shape[0], cube.shape[1], 0), dtype = np.float32)
+      self.combined = np.concatenate((self.combined, cube), axis = 2)
+      self.combined_wavelengths = np.concatenate((self.combined_wavelengths, wavelengths))
+    self.combined_which = which_data
+    self.combined_names = list(cube_names)   
 
 
   # This doesn't work yet
