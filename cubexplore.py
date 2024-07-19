@@ -1,4 +1,3 @@
-
 import os
 import numpy as np
 import pandas as pd
@@ -7,6 +6,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import pickle
 import pytz
+import tifffile as tiff
 import spectral as spy
 import spectral.io.envi as envi
 from datetime import datetime
@@ -23,9 +23,11 @@ class Cubes:
     time = datetime.now().astimezone(yerevantime).strftime('%Y-%m-%d %H:%M:%S')
     self.last_loaded = time
     self.data_source = data_source
+    self.data_path = data_path
     
     self.raw = {}
     self.metadata = {}
+    self.correction_data = None
     self.processed = {}
     self.normalized = {}
     
@@ -61,6 +63,8 @@ class Cubes:
         wavelengths = np.array(wavelengths[0])
         img = envi.open(header_file, data_file)
         img_loaded = img.load()
+      elif data_source == 'tiff_cube':
+        img_loaded = tiff.imread(os.path.join(data_path, cubename).transpose(1, 2, 0))      
       cube = np.array(img_loaded, dtype = np.float32)
       
       self.raw[cubename] = cube
@@ -103,7 +107,31 @@ class Cubes:
         self.metadata[cubename]['notes'] = metadata.loc[ex, 'notes']
         self.metadata[cubename]['wavelengths'] = np.array(range(em_start, em_end+1, step))
 
+  def get_correction_data(self, correction_data_path, only_needed = True):
+    # Load Correction Data (TLS Basic Wavelength Scan, several scans repetitions). All scans must have the same start, stop, step
+    data_files = os.listdir(correction_data_path)
+    for filename in data_files:
+      measurement = filename.split('.')[0]
+      data = pd.read_csv(os.path.join(correction_data_path, filename), sep = '\t', skiprows = 9)
+      wavelength = round(data.X)
+      optical_power = data.Y * 10 ** 6
+      data_new = pd.DataFrame({'Wavelength': wavelength, f'OP_uW_m{measurement}': optical_power})
+      data_new = data_new.reset_index(drop = True).set_index('Wavelength')
+
+      if self.correction_data is None:
+        self.correction_data = data_new
+      else:
+        self.correction_data = pd.concat([self.correction_data, data_new], axis = 1)
+
+    self.correction_data['Average'] = self.correction_data.mean(axis = 1)
+
+    if only_needed == True:
+      wavelengths_digit = [self.metadata[cubename]['ex'] for cubename in self.names if self.metadata[cubename]['ex'].isdigit()]
+      wavelengths_needed = [float(wvl) for wvl in wavelengths_digit if float(wvl) in self.correction_data.index]
+      self.correction_data = self.correction_data.loc[wavelengths_needed]
+
   def process(self, cubes_to_analyse, background_cube = None, correction_data_path = None):
+    
     if background_cube:
       for cube in cubes_to_analyse:
         print(f"Subtracting background from '{cube}'...")
@@ -111,38 +139,38 @@ class Cubes:
         negatives = (cube_subtracted < 0)
         cube_subtracted[negatives] = 0
         self.processed[cube] = cube_subtracted
-      print('Background subtraction done.\n See subtracted cubes in cubes.processed attribute.\n--------------------------------')
+      print('Background subtraction done. See subtracted cubes in cubes.processed attribute.\n--------------------------------')
     else: print('Attention! No background subtraction took place.\n--------------------------------')
 
     if correction_data_path:
-      
-      # Load Correction Data (TLS Basic Wavelength Scan, several scans repetitions). All scans must have the same start, stop, step
-      file_num = [int(filename[:-4]) for filename in os.listdir(correction_data_path)]
-      anyfile_for_wavelengths = 1
-      anyfile = pd.read_csv(os.path.join(correction_data_path, str(anyfile_for_wavelengths) + '.TRQ'), sep = '\t', skiprows = 9)
-      wavelengths = round(anyfile.X, 1).astype(float)
+      self.get_correction_data(correction_data_path, only_needed = True)
+      # # Load Correction Data (TLS Basic Wavelength Scan, several scans repetitions). All scans must have the same start, stop, step
+      # file_num = [int(filename[:-4]) for filename in os.listdir(correction_data_path)]
+      # anyfile_for_wavelengths = 1
+      # anyfile = pd.read_csv(os.path.join(correction_data_path, str(anyfile_for_wavelengths) + '.TRQ'), sep = '\t', skiprows = 9)
+      # wavelengths = round(anyfile.X, 1).astype(float)
 
-      correction_data = pd.DataFrame({'wavelength': wavelengths})
-      measurements = [] #seems to be not useful, maybe we can eliminate later
+      # correction_data = pd.DataFrame({'wavelength': wavelengths})
+      # measurements = [] #seems to be not useful, maybe we can eliminate later
 
-      for num in file_num:
-        path = os.path.join(correction_data_path, str(num)+'.TRQ')
-        df = pd.read_csv(path, sep = '\t', skiprows = 9)
-        y = df.Y * 10 ** 6
-        colname = 'm' + str(num)
-        measurements += [colname]
-        # correction_data = pd.concat([correction_data, y], axis = 1)
-        correction_data.loc[:, colname] = y
+      # for num in file_num:
+      #   path = os.path.join(correction_data_path, str(num)+'.TRQ')
+      #   df = pd.read_csv(path, sep = '\t', skiprows = 9)
+      #   y = df.Y * 10 ** 6
+      #   colname = 'm' + str(num)
+      #   measurements += [colname]
+      #   # correction_data = pd.concat([correction_data, y], axis = 1)
+      #   correction_data.loc[:, colname] = y
 
-      correction_data.set_index(keys = 'wavelength', inplace = True)
+      # correction_data.set_index(keys = 'wavelength', inplace = True)
 
-      # Select only those wavelengths which are corresponding to our cubes of interest
-      wavelengths_needed = [float(self.metadata[cube]['ex']) for cube in cubes_to_analyse if float(self.metadata[cube]['ex']) in list(wavelengths)]
-      correction_data = correction_data.loc[wavelengths_needed]
+      # # Select only those wavelengths which are corresponding to our cubes of interest
+      # wavelengths_needed = [float(self.metadata[cube]['ex']) for cube in cubes_to_analyse if float(self.metadata[cube]['ex']) in list(wavelengths)]
+      # correction_data = correction_data.loc[wavelengths_needed]
 
-      correction_data['average'] = correction_data[measurements].mean(axis = 1)
-      self.correction_data = correction_data
-      self.wavelengths_needed = wavelengths_needed
+      # correction_data['average'] = correction_data[measurements].mean(axis = 1)
+      # self.correction_data = correction_data
+      # self.wavelengths_needed = wavelengths_needed
 
       if not self.processed:
         cubes_to_correct = self.raw.keys()
@@ -150,26 +178,27 @@ class Cubes:
         cubes_to_correct = self.processed.keys()
 
       self.cubes_to_correct = cubes_to_correct
-      for cube in cubes_to_correct:
-        print(f"Correcting cube '{cube}'...")
-        ex = float(self.metadata[cube]['ex'])
-        if ex in list(wavelengths_needed): #maybe this is odd, i don't remember, will check later
+      for cubename in cubes_to_correct:
+        print(f"Correcting cube '{cubename}'...")
+        ex = self.metadata[cubename]['ex']
+        ex = float(ex) if ex.isdigit() else ex
+        if ex in self.correction_data.index:
 
-          correction_factor = correction_data['average'][ex]/correction_data['average'].mean()
-          self.metadata[cube]['correction_factor'] = round(correction_factor, 2)
+          correction_factor = self.correction_data['Average'][ex]/self.correction_data['Average'].mean()
+          self.metadata[cubename]['correction_factor'] = round(correction_factor, 2)
 
           if background_cube:
-            data_corrected = self.processed[cube] / correction_factor
+            data_corrected = self.processed[cubename] / correction_factor
           else:
-            data_corrected = self.raw[cube] / correction_factor
-          self.processed[cube] = np.around(data_corrected, decimals = 2)
+            data_corrected = self.raw[cubename] / correction_factor
+          self.processed[cubename] = np.around(data_corrected, decimals = 2)
 
-        else: print(f"Cube '{cube}' does not have a correction factor, but sometimes that's ok! ;)") 
+        else: print(f"Cube '{cubename}' does not have a correction factor, but sometimes that's ok! ;)") 
 
-      print('Correction of cubes done. See corrected cubes in cubes.processed attribute.\n--------------------------------')
+      print('Correction of cubes done. See corrected cubes in attribute self.processed .\n--------------------------------')
     else: print('Attention! No data correction took place.\n--------------------------------') 
 
-  def view(self, cube_to_view: str, y1 = None, y2 = None, x1 = None, x2 = None, blue_bands = range(3, 9), green_bands = range(13, 19), red_bands = range(23, 29), ax = None):
+  def view(self, cube_to_view: str, y1 = None, y2 = None, x1 = None, x2 = None, blue_bands = range(3, 9), green_bands = range(13, 19), red_bands = range(23, 29), ax = None, color = 'blue'):
     
     cube = self.raw[cube_to_view]
     
@@ -202,13 +231,15 @@ class Cubes:
     # Set the boundaries
     coords = pd.Series([y1, y2, x1, x2])
     if coords.notna().all():
-      ax.axvline(x = x1, color = 'blue', linewidth = 0.7, linestyle = '--');
-      ax.axvline(x = x2, color = 'blue', linewidth = 0.7, linestyle = '--');
-      ax.axhline(y = y1, color = 'blue', linewidth = 0.7, linestyle = '--');
-      ax.axhline(y = y2, color = 'blue', linewidth = 0.7, linestyle = '--');
+      color = color
+      ax.axvline(x = x1, color = color, linewidth = 0.7, linestyle = '--');
+      ax.axvline(x = x2, color = color, linewidth = 0.7, linestyle = '--');
+      ax.axhline(y = y1, color = color, linewidth = 0.7, linestyle = '--');
+      ax.axhline(y = y2, color = color, linewidth = 0.7, linestyle = '--');
     
       self.selected_rows = slice(min(y1, y2), max(y1, y2)+1)
       self.selected_cols = slice(min(x1, x2), max(x1, x2)+1)
+    
     # elif any(coords):
     #   coords_dict = {
     #     'y1': y1,
@@ -220,7 +251,7 @@ class Cubes:
     #   print(f"{not_provided} not provided")
     # else: print('No coordinates provided for defining a region.\nIf you want you can provide y1, y2, x1, x2.')
     
-    plt.show()
+    # plt.show()
 
   def crop(self, y1 = None, y2 = None, x1 = None, x2 = None):
     coords = [y1, y2, x1, x2]
@@ -313,7 +344,7 @@ class Cubes:
     else:
       ax = ax
     sns.heatmap(eem, cmap = 'coolwarm', ax = ax, vmin = vmin, vmax = vmax)
-    plt.title('Average EEM of Selected Region')
+    # plt.title('Average EEM of Selected Region')
     plt.xlabel('Emission')
     plt.ylabel('Excitation')
     plt.xticks(rotation = 45)
@@ -337,6 +368,7 @@ class Cubes:
     self.combined_which = which_data
     self.combined_names = list(cube_names)   
 
+  
 
   # This doesn't work yet
   # def savefile(self, name = 'cubes', path = str):
