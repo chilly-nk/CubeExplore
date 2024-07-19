@@ -107,7 +107,7 @@ class Cubes:
         self.metadata[cubename]['notes'] = metadata.loc[ex, 'notes']
         self.metadata[cubename]['wavelengths'] = np.array(range(em_start, em_end+1, step))
 
-  def get_correction_data(self, correction_data_path, only_needed = True):
+  def get_correction_data(self, correction_data_path):
     # Load Correction Data (TLS Basic Wavelength Scan, several scans repetitions). All scans must have the same start, stop, step
     data_files = os.listdir(correction_data_path)
     for filename in data_files:
@@ -124,11 +124,11 @@ class Cubes:
         self.correction_data = pd.concat([self.correction_data, data_new], axis = 1)
 
     self.correction_data['Average'] = self.correction_data.mean(axis = 1)
+    self.correction_data_all = self.correction_data
 
-    if only_needed == True:
-      wavelengths_digit = [self.metadata[cubename]['ex'] for cubename in self.names if self.metadata[cubename]['ex'].isdigit()]
-      wavelengths_needed = [float(wvl) for wvl in wavelengths_digit if float(wvl) in self.correction_data.index]
-      self.correction_data = self.correction_data.loc[wavelengths_needed]
+    wavelengths_digit = [self.metadata[cubename]['ex'] for cubename in self.names if self.metadata[cubename]['ex'].isdigit()]
+    wavelengths_needed = [float(wvl) for wvl in wavelengths_digit if float(wvl) in self.correction_data.index]
+    self.correction_data = self.correction_data.loc[wavelengths_needed]
 
   def process(self, cubes_to_analyse, background_cube = None, correction_data_path = None):
     
@@ -143,34 +143,7 @@ class Cubes:
     else: print('Attention! No background subtraction took place.\n--------------------------------')
 
     if correction_data_path:
-      self.get_correction_data(correction_data_path, only_needed = True)
-      # # Load Correction Data (TLS Basic Wavelength Scan, several scans repetitions). All scans must have the same start, stop, step
-      # file_num = [int(filename[:-4]) for filename in os.listdir(correction_data_path)]
-      # anyfile_for_wavelengths = 1
-      # anyfile = pd.read_csv(os.path.join(correction_data_path, str(anyfile_for_wavelengths) + '.TRQ'), sep = '\t', skiprows = 9)
-      # wavelengths = round(anyfile.X, 1).astype(float)
-
-      # correction_data = pd.DataFrame({'wavelength': wavelengths})
-      # measurements = [] #seems to be not useful, maybe we can eliminate later
-
-      # for num in file_num:
-      #   path = os.path.join(correction_data_path, str(num)+'.TRQ')
-      #   df = pd.read_csv(path, sep = '\t', skiprows = 9)
-      #   y = df.Y * 10 ** 6
-      #   colname = 'm' + str(num)
-      #   measurements += [colname]
-      #   # correction_data = pd.concat([correction_data, y], axis = 1)
-      #   correction_data.loc[:, colname] = y
-
-      # correction_data.set_index(keys = 'wavelength', inplace = True)
-
-      # # Select only those wavelengths which are corresponding to our cubes of interest
-      # wavelengths_needed = [float(self.metadata[cube]['ex']) for cube in cubes_to_analyse if float(self.metadata[cube]['ex']) in list(wavelengths)]
-      # correction_data = correction_data.loc[wavelengths_needed]
-
-      # correction_data['average'] = correction_data[measurements].mean(axis = 1)
-      # self.correction_data = correction_data
-      # self.wavelengths_needed = wavelengths_needed
+      self.get_correction_data(correction_data_path)
 
       if not self.processed:
         cubes_to_correct = self.raw.keys()
