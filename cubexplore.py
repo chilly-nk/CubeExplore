@@ -10,6 +10,7 @@ import tifffile as tiff
 import spectral as spy
 import spectral.io.envi as envi
 from datetime import datetime
+from PIL import Image
 from sklearn.decomposition import PCA
 
 # Initiate pyimagej (at fiji mode)
@@ -171,9 +172,15 @@ class Cubes:
       print('Correction of cubes done. See corrected cubes in attribute self.processed .\n--------------------------------')
     else: print('Attention! No data correction took place.\n--------------------------------') 
 
-  def view(self, cube_to_view: str, y1 = None, y2 = None, x1 = None, x2 = None, blue_bands = range(3, 9), green_bands = range(13, 19), red_bands = range(23, 29), ax = None, color = 'blue'):
+  def view(self, cube_to_view: str, y1 = None, y2 = None, x1 = None, x2 = None, blue_bands = range(3, 9), green_bands = range(13, 19), red_bands = range(23, 29), ax = None, color = 'blue', pic_only = False, title = None, fontsize = 12, filename = None, savefig = False):
     
     cube = self.raw[cube_to_view]
+    if filename:
+      filename = filename+'.png'
+    elif title:
+      filename = title+'.png'
+    else:
+      filename = f"view_{self.metadata[cube_to_view]['ex']}.png"
     
     if self.data_source == 'goldeneye' or self.data_source == 'snapshot':
       blue_bands = range(11, 21)
@@ -194,25 +201,35 @@ class Cubes:
     # Stack the channels to create an RGB image
     rgb_image = np.stack([normalized_red, normalized_green, normalized_blue], axis=-1)  
 
-    # Display the RGB image
-    if ax is None:
-      fig, ax = plt.subplots()
+    if pic_only == True:
+      rgb_image_norm = (rgb_image * 255).astype(np.uint8)
+      image = Image.fromarray(rgb_image_norm)
+      image.save(f"Pic_Only_{filename}")
     else:
-      ax = ax
-    ax.imshow(rgb_image);
+      # Display the RGB image
+      if ax is None:
+        fig, ax = plt.subplots()
+      else:
+        ax = ax
+      ax.imshow(rgb_image);
+
+      if title:
+        ax.set_title(title, size = fontsize)
     
-    # Set the boundaries
-    coords = pd.Series([y1, y2, x1, x2])
-    if coords.notna().all():
-      color = color
-      ax.axvline(x = x1, color = color, linewidth = 0.7, linestyle = '--');
-      ax.axvline(x = x2, color = color, linewidth = 0.7, linestyle = '--');
-      ax.axhline(y = y1, color = color, linewidth = 0.7, linestyle = '--');
-      ax.axhline(y = y2, color = color, linewidth = 0.7, linestyle = '--');
+      # Set the boundaries
+      coords = pd.Series([y1, y2, x1, x2])
+      if coords.notna().all():
+        color = color
+        ax.axvline(x = x1, color = color, linewidth = 0.7, linestyle = '--');
+        ax.axvline(x = x2, color = color, linewidth = 0.7, linestyle = '--');
+        ax.axhline(y = y1, color = color, linewidth = 0.7, linestyle = '--');
+        ax.axhline(y = y2, color = color, linewidth = 0.7, linestyle = '--');
     
-      self.selected_rows = slice(min(y1, y2), max(y1, y2)+1)
-      self.selected_cols = slice(min(x1, x2), max(x1, x2)+1)
+        self.selected_rows = slice(min(y1, y2), max(y1, y2)+1)
+        self.selected_cols = slice(min(x1, x2), max(x1, x2)+1)
     
+      if savefig == True:
+        plt.savefig(filename, bbox_inches = 'tight', dpi = 200)
     # elif any(coords):
     #   coords_dict = {
     #     'y1': y1,
@@ -292,7 +309,7 @@ class Cubes:
       cube_normalized = cube / cube_max
       self.normalized[cubename] = cube_normalized
 
-  def quick_eem(self, cubes_to_analyse = None, which_from = 'processed', ax = None, vmin = None, vmax = None):
+  def quick_eem(self, cubes_to_analyse = None, which_from = 'processed', ax = None, vmin = None, vmax = None, title = None, fontsize = 12):
     
     data_to_process = getattr(self, which_from)
     if cubes_to_analyse:
@@ -318,10 +335,11 @@ class Cubes:
       ax = ax
     sns.heatmap(eem, cmap = 'coolwarm', ax = ax, vmin = vmin, vmax = vmax)
     # plt.title('Average EEM of Selected Region')
-    plt.xlabel('Emission')
-    plt.ylabel('Excitation')
-    plt.xticks(rotation = 45)
-    plt.yticks(rotation = 0)
+    ax.set_title(title)
+    plt.xlabel('Emission', size = fontsize)
+    plt.ylabel('Excitation', size = fontsize)
+    plt.xticks(rotation = 45, size = fontsize)
+    plt.yticks(rotation = 0, size = fontsize)
 
   def combine(self, cubes_to_analyse = None, which_data = 'processed'):
     data_to_process = getattr(self, which_data)
@@ -348,6 +366,8 @@ class Cubes:
   #   filepath = os.path.join(path, name + '.pkl')
   #   with open(filepath, 'wb') as file:
   #     pickle.dump(self, file)
+
+
 
 
 
