@@ -42,6 +42,9 @@ class Cubes:
     
     self.pcs_bycube = {}
     self.pcs_bycube_transformed = {}
+
+    self.mask = None
+    self.mask_labels = {}
     
     if cubes_to_load:
       cube_names = sorted(cubes_to_load)
@@ -309,37 +312,70 @@ class Cubes:
       cube_normalized = cube / cube_max
       self.normalized[cubename] = cube_normalized
 
-  def quick_eem(self, cubes_to_analyse = None, which_from = 'processed', ax = None, vmin = None, vmax = None, title = None, fontsize = 12):
+  def read_mask(self, filepath, mask_labels = None):
+    img = Image.open(filepath)
+    img_arr = np.array(img)
+    # This part must be eliminated after our masks are exact-value ones
+    img_arr[(img_arr < 50)] = 0
+    img_arr[(img_arr >= 50) & (img_arr < 125)] = 1
+    img_arr[(img_arr >= 125)] = 2
     
-    data_to_process = getattr(self, which_from)
+    self.mask = img_arr
+    self.mask_labels = mask_labels
+    print(f"Mask Labels: {mask_labels}")
+    plt.imshow(img_arr);
+
+  def quick_eem(self, cubes_to_analyse = None, which_data = 'processed', mask_label = None, transform = False, vmin = None, vmax = None, title = None, ax = None, fontsize = 'medium', ticksize = 'medium'):
+      
+    data_to_process = getattr(self, which_data)
+    
     if cubes_to_analyse:
       cube_names = cubes_to_analyse
     else:
       cube_names = self.names
 
-    rows = self.selected_rows
-    cols = self.selected_cols
+    if mask_label:
+      where = np.where(self.mask == self.mask_labels[mask_label])
+    else:
+      rows = self.selected_rows
+      cols = self.selected_cols
+    
     eem = pd.DataFrame()
     for cubename in cube_names:
-      cube_segment = data_to_process[cubename][rows, cols, :]
-      cube_segment_avg = np.mean(cube_segment, axis = (0, 1), keepdims = True).reshape(1, cube_segment.shape[2])
+      if mask_label:
+        cube_segment = data_to_process[cubename][where]
+        cube_segment_avg = np.mean(cube_segment, axis = 0).reshape(1, cube_segment.shape[-1])
+      else:
+        cube_segment = data_to_process[cubename][rows, cols, :]
+        cube_segment_avg = np.mean(cube_segment, axis = (0, 1)).reshape(1, cube_segment.shape[-1])
       ex = pd.Series(str(self.metadata[cubename]['ex']))
       wavelengths = self.metadata[cubename]['wavelengths']
       spectrum_df = pd.DataFrame(cube_segment_avg, columns = wavelengths, index = ex)
       eem = pd.concat([eem, spectrum_df], axis = 0)
     eem = eem.sort_index(ascending = False)
+
+    if transform == True:
+      eem_stacked = eem.stack()
+      eem_average = eem_stacked.mean()
+      eem_std = eem_stacked.std()
+      eem_zscaled = ((eem_stacked - eem_average) / eem_std).unstack()
+      eem = eem_zscaled.applymap(np.exp)
+
     self.last_eem = eem
     if ax is None:
       fig, ax = plt.subplots()
     else:
       ax = ax
     sns.heatmap(eem, cmap = 'coolwarm', ax = ax, vmin = vmin, vmax = vmax)
-    # plt.title('Average EEM of Selected Region')
-    ax.set_title(title)
-    plt.xlabel('Emission', size = fontsize)
-    plt.ylabel('Excitation', size = fontsize)
-    plt.xticks(rotation = 45, size = fontsize)
-    plt.yticks(rotation = 0, size = fontsize)
+    if title == None:
+      this_region = f"Segment '{mask_label}'" if mask_label else f"Y={rows.start}:{rows.stop}, X={cols.start}:{cols.stop}"
+      title = f"Average EEM\n({this_region}, {which_data.capitalize()} Data)"
+    ax.set_title(title, size = fontsize)
+    ax.set_xlabel('Emission', size=fontsize)
+    ax.set_ylabel('Excitation', size=fontsize)
+    ax.tick_params(axis='x', rotation=45, labelsize=ticksize)
+    ax.tick_params(axis='y', rotation=0, labelsize=ticksize)
+
 
   def combine(self, cubes_to_analyse = None, which_data = 'processed'):
     data_to_process = getattr(self, which_data)
@@ -359,7 +395,8 @@ class Cubes:
     self.combined_which = which_data
     self.combined_names = list(cube_names)   
 
-  
+  # def read_mask(self, filepath, mask_labels = None):
+    
 
   # This doesn't work yet
   # def savefile(self, name = 'cubes', path = str):
