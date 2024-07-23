@@ -45,6 +45,11 @@ class Cubes:
 
     self.mask = None
     self.mask_labels = {}
+
+    self.spectra = {} # By Cube
+    self.spectra_avg = {} # By Cube
+    self.spectra_combined = None # In progress
+    self.spectra_combined_avg = None
     
     if cubes_to_load:
       cube_names = sorted(cubes_to_load)
@@ -325,7 +330,7 @@ class Cubes:
     print(f"Mask Labels: {mask_labels}")
     plt.imshow(img_arr);
 
-  def quick_eem(self, cubes_to_analyse = None, which_data = 'processed', mask_label = None, transform = False, vmin = None, vmax = None, title = None, ax = None, fontsize = 'medium', ticksize = 'medium'):
+  def get_eem(self, cubes_to_analyse = None, which_data = 'processed', mask_label = None, transform = False, plot = True, vmin = None, vmax = None, axis_ratio = None, title = None, ax = None, cbar_ax = None, fontsize = 'medium', ticksize = 'medium', xtickstep = 2, also_spectra = True):
       
     data_to_process = getattr(self, which_data)
     
@@ -341,6 +346,7 @@ class Cubes:
       cols = self.selected_cols
     
     eem = pd.DataFrame()
+    self.spectra_combined_avg = pd.DataFrame()
     for cubename in cube_names:
       if mask_label:
         cube_segment = data_to_process[cubename][where]
@@ -350,8 +356,12 @@ class Cubes:
         cube_segment_avg = np.mean(cube_segment, axis = (0, 1)).reshape(1, cube_segment.shape[-1])
       ex = pd.Series(str(self.metadata[cubename]['ex']))
       wavelengths = self.metadata[cubename]['wavelengths']
-      spectrum_df = pd.DataFrame(cube_segment_avg, columns = wavelengths, index = ex)
-      eem = pd.concat([eem, spectrum_df], axis = 0)
+      spectrum_avg = pd.DataFrame(cube_segment_avg, columns = wavelengths, index = ex)
+      eem = pd.concat([eem, spectrum_avg], axis = 0)
+    if also_spectra == True:
+      self.spectra_avg = eem.sort_index(ascending=True).T
+      self.spectra_combined_avg = eem.stack().reset_index()
+      self.spectra_combined_avg.columns = ['ex', 'em', 'spectrum']
     eem = eem.sort_index(ascending = False)
 
     if transform == True:
@@ -362,19 +372,21 @@ class Cubes:
       eem = eem_zscaled.applymap(np.exp)
 
     self.last_eem = eem
-    if ax is None:
-      fig, ax = plt.subplots()
-    else:
-      ax = ax
-    sns.heatmap(eem, cmap = 'coolwarm', ax = ax, vmin = vmin, vmax = vmax)
-    if title == None:
-      this_region = f"Segment '{mask_label}'" if mask_label else f"Y={rows.start}:{rows.stop}, X={cols.start}:{cols.stop}"
-      title = f"Average EEM\n({this_region}, {which_data.capitalize()} Data)"
-    ax.set_title(title, size = fontsize)
-    ax.set_xlabel('Emission', size=fontsize)
-    ax.set_ylabel('Excitation', size=fontsize)
-    ax.tick_params(axis='x', rotation=45, labelsize=ticksize)
-    ax.tick_params(axis='y', rotation=0, labelsize=ticksize)
+    
+    if plot == True:
+      if ax is None:
+        fig, ax = plt.subplots()
+      else:
+        ax = ax
+      sns.heatmap(eem, cmap = 'coolwarm', ax = ax, vmin = vmin, vmax = vmax)
+      if title == None:
+        this_region = f"Segment '{mask_label}'" if mask_label else f"Y={rows.start}:{rows.stop}, X={cols.start}:{cols.stop}"
+        title = f"Average EEM\n({this_region}, {which_data.capitalize()} Data)"
+      ax.set_title(title, size = fontsize)
+      ax.set_xlabel('Emission', size=fontsize)
+      ax.set_ylabel('Excitation', size=fontsize)
+      ax.tick_params(axis='x', rotation=45, labelsize=ticksize)
+      ax.tick_params(axis='y', rotation=0, labelsize=ticksize)
 
 
   def combine(self, cubes_to_analyse = None, which_data = 'processed'):
