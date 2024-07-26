@@ -28,7 +28,8 @@ class Cubes:
     
     self.raw = {}
     self.metadata = {}
-    self.correction_data = None
+    self.correction_data_ls = None
+    self.spectral_sensitivity = None
     self.processed = {}
     self.normalized = {}
     
@@ -116,30 +117,33 @@ class Cubes:
         self.metadata[cubename]['notes'] = metadata.loc[ex, 'notes']
         self.metadata[cubename]['wavelengths'] = np.array(range(em_start, em_end+1, step))
 
-  def get_correction_data(self, correction_data_path):
+  def get_tls_data(self, correction_data_ls):
     # Load Correction Data (TLS Basic Wavelength Scan, several scans repetitions). All scans must have the same start, stop, step
-    data_files = os.listdir(correction_data_path)
+    data_files = os.listdir(correction_data_ls)
     for filename in data_files:
       measurement = filename.split('.')[0]
-      data = pd.read_csv(os.path.join(correction_data_path, filename), sep = '\t', skiprows = 9)
+      data = pd.read_csv(os.path.join(correction_data_ls, filename), sep = '\t', skiprows = 9)
       wavelength = round(data.X)
       optical_power = data.Y * 10 ** 6
       data_new = pd.DataFrame({'Wavelength': wavelength, f'OP_uW_m{measurement}': optical_power})
       data_new = data_new.reset_index(drop = True).set_index('Wavelength')
 
-      if self.correction_data is None:
-        self.correction_data = data_new
+      if self.correction_data_ls is None:
+        self.correction_data_ls = data_new
       else:
-        self.correction_data = pd.concat([self.correction_data, data_new], axis = 1)
+        self.correction_data_ls = pd.concat([self.correction_data_ls, data_new], axis = 1)
 
-    self.correction_data['Average'] = self.correction_data.mean(axis = 1)
-    self.correction_data_all = self.correction_data
+    self.correction_data_ls['Average'] = self.correction_data_ls.mean(axis = 1)
+    self.correction_data_all = self.correction_data_ls
 
     wavelengths_digit = [self.metadata[cubename]['ex'] for cubename in self.names if self.metadata[cubename]['ex'].isdigit()]
-    wavelengths_needed = [float(wvl) for wvl in wavelengths_digit if float(wvl) in self.correction_data.index]
-    self.correction_data = self.correction_data.loc[wavelengths_needed]
+    wavelengths_needed = [float(wvl) for wvl in wavelengths_digit if float(wvl) in self.correction_data_ls.index]
+    self.correction_data_ls = self.correction_data_ls.loc[wavelengths_needed]
 
-  def process(self, cubes_to_analyse, background_cube = None, correction_data_path = None):
+  def get_spectral_sensitivity(self, spectral_sensitivity_data):
+    self.spectral_sensitivity = pd.read_csv(spectral_sensitivity_data, index_col = 0)
+  
+  def process(self, cubes_to_analyse, background_cube = None, correction_data_ls = None, spectral_sensitivity_data = None):
     
     if background_cube:
       for cube in cubes_to_analyse:
@@ -151,8 +155,8 @@ class Cubes:
       print('Background subtraction done. See subtracted cubes in cubes.processed attribute.\n--------------------------------')
     else: print('Attention! No background subtraction took place.\n--------------------------------')
 
-    if correction_data_path:
-      self.get_correction_data(correction_data_path)
+    if correction_data_ls:
+      self.get_tls_data(correction_data_ls)
 
       if not self.processed:
         cubes_to_correct = self.raw.keys()
@@ -161,12 +165,12 @@ class Cubes:
 
       self.cubes_to_correct = cubes_to_correct
       for cubename in cubes_to_correct:
-        print(f"Correcting cube '{cubename}'...")
+        print(f"Correcting by light source cube '{cubename}'...")
         ex = self.metadata[cubename]['ex']
         ex = float(ex) if ex.isdigit() else ex
-        if ex in self.correction_data.index:
+        if ex in self.correction_data_ls.index:
 
-          correction_factor = self.correction_data['Average'][ex]/self.correction_data['Average'].mean()
+          correction_factor = self.correction_data_ls['Average'][ex]/self.correction_data_ls['Average'].mean()
           self.metadata[cubename]['correction_factor'] = round(correction_factor, 2)
 
           if background_cube:
@@ -176,9 +180,41 @@ class Cubes:
           self.processed[cubename] = np.around(data_corrected, decimals = 2)
 
         else: print(f"Cube '{cubename}' does not have a correction factor, but sometimes that's ok! ;)") 
+      print('Correction of cubes by light source done. See corrected cubes in attribute self.processed .\n--------------------------------')
+    else: print('Attention! No correction by light source took place.\n--------------------------------') 
+    
+    if spectral_sensitivity_data:
+      self.get_spectral_sensitivity(spectral_sensitivity_data)
+      
+      if not self.processed:
+        cubes_to_correct = self.raw.keys()
+      else:
+        cubes_to_correct = self.processed.keys()
 
-      print('Correction of cubes done. See corrected cubes in attribute self.processed .\n--------------------------------')
-    else: print('Attention! No data correction took place.\n--------------------------------') 
+      self.cubes_to_correct = cubes_to_correct
+
+      sens_wvl = self.spectral_sensitivity.index
+      sens_curve = np.array(self.spectral_sensitivity.spectral_sensitivity)
+      for cubename in cubes_to_correct:
+        print(f"Correcting by spectral sensitivity cube '{cubename}'...")
+        
+        cube_wvl = self.metadata[cubename]['wavelengths']
+        if np.isin(cube_wvl, sens_wvl).mean() != 1:
+          missing = set(cube_wvl).difference(sens_wvl)
+          print(f"Attention! Cube '{cubename}' wavelengths are not in sensitivity data.")
+          print(f"Missing wavelengths in sens. data: {missing}")
+          print(f"Cube {cubename} not corrected by sensitivity data.")
+          continue
+
+        if not self.processed:
+          cube_corrected = self.raw[cubename] / sens_curve
+        else:
+          cube_corrected = self.processed[cubename] / sens_curve
+        
+        self.processed[cubename] = np.around(data_corrected, decimals = 2)
+
+      print('Correction of cubes by spectral sensitivity done. See corrected cubes in attribute self.processed .\n--------------------------------')
+    else: print('Attention! No data correction by spectral sensitivity took place.\n--------------------------------') 
 
   def view(self, cube_to_view: str, y1 = None, y2 = None, x1 = None, x2 = None, blue_bands = range(3, 9), green_bands = range(13, 19), red_bands = range(23, 29), ax = None, color = 'blue', pic_only = False, title = None, fontsize = 12, filename = None, savefig = False):
     
