@@ -59,7 +59,6 @@ class Cubes:
     self.names = cube_names
     
     for cubename in cube_names:
-      # cubes[i] = tiff.imread(os.path.join(data_path, i)).transpose(1, 2, 0) # for loading cubes from 3D tiffs
       print(f"Loading '{cubename}'...")
       if data_source == 'nuance':
         img = ij.io().open(os.path.join(data_path, cubename))
@@ -73,8 +72,8 @@ class Cubes:
         wavelengths = np.array(wavelengths[0])
         img = envi.open(header_file, data_file)
         img_loaded = img.load()
-      elif data_source == 'tiff_cube':
-        img_loaded = tiff.imread(os.path.join(data_path, cubename).transpose(1, 2, 0))      
+      elif data_source == 'tiff_cubes':
+        img_loaded = tiff.imread(os.path.join(data_path, cubename)).transpose(1, 2, 0)      
       cube = np.array(img_loaded, dtype = np.float32)
       
       self.raw[cubename] = cube
@@ -366,7 +365,7 @@ class Cubes:
     print(f"Mask Labels: {mask_labels}")
     plt.imshow(img_arr);
 
-  def get_eem(self, cubes_to_analyse = None, which_data = 'processed', mask_label = None, transform = False, plot = True, vmin = None, vmax = None, axis_ratio = None, title = None, ax = None, cbar_ax = None, fontsize = 'medium', ticksize = 'medium', xtickstep = 2, also_spectra = True):
+  def get_eem(self, cubes_to_analyse = None, which_data = 'processed', mask_label = None, transform = False, plot = True, vmin = None, vmax = None, axis_ratio = None, title = None, region = None, ax = None, cbar_ax = None, fontsize = 'medium', ticksize = 'medium', xtickstep = 2, also_spectra = True):
       
     data_to_process = getattr(self, which_data)
     
@@ -416,7 +415,10 @@ class Cubes:
         ax = ax
       sns.heatmap(eem, cmap = 'coolwarm', ax = ax, vmin = vmin, vmax = vmax)
       if title == None:
-        this_region = f"Segment '{mask_label}'" if mask_label else f"Y={rows.start}:{rows.stop}, X={cols.start}:{cols.stop}"
+        if region == None:
+          this_region = f"Segment '{mask_label}'" if mask_label else f"Y={rows.start}:{rows.stop}, X={cols.start}:{cols.stop}"
+        else:
+          this_region = f"Segment '{mask_label}'" if mask_label else f"{region.capitalize()}: Y={rows.start}:{rows.stop}, X={cols.start}:{cols.stop}"
         title = f"Average EEM\n({this_region}, {which_data.capitalize()} Data)"
       ax.set_title(title, size = fontsize)
       ax.set_xlabel('Emission', size=fontsize)
