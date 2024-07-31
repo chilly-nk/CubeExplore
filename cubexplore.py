@@ -195,7 +195,6 @@ class Cubes:
       sens_wvl = self.spectral_sensitivity.index
       sens_curve = np.array(self.spectral_sensitivity.spectral_sensitivity)
       for cubename in cubes_to_correct:
-        print(f"Correcting by spectral sensitivity cube '{cubename}'...")
         
         cube_wvl = self.metadata[cubename]['wavelengths']
         if np.isin(cube_wvl, sens_wvl).mean() != 1:
@@ -206,8 +205,10 @@ class Cubes:
           continue
 
         if not self.processed:
+          print(f"Correcting by spectral sensitivity RAW cube '{cubename}'...")
           cube_corrected = self.raw[cubename] / sens_curve
         else:
+          print(f"Correcting by spectral sensitivity PROCESSED cube '{cubename}'...")
           cube_corrected = self.processed[cubename] / sens_curve
         
         self.processed[cubename] = np.around(data_corrected, decimals = 2)
@@ -356,13 +357,14 @@ class Cubes:
     img = Image.open(filepath)
     img_arr = np.array(img)
     # This part must be eliminated after our masks are exact-value ones
-    img_arr[(img_arr < 50)] = 0
-    img_arr[(img_arr >= 50) & (img_arr < 125)] = 1
-    img_arr[(img_arr >= 125)] = 2
+    # img_arr[(img_arr < 50)] = 0
+    # img_arr[(img_arr >= 50) & (img_arr < 125)] = 1
+    # img_arr[(img_arr >= 125)] = 2
     
     self.mask = img_arr
     self.mask_labels = mask_labels
-    print(f"Mask Labels: {mask_labels}")
+    print(f"Values in Mask: {np.unique(img_arr)}")
+    print(f"Assigned Labels: {mask_labels}")
     plt.imshow(img_arr);
 
   def get_eem(self, cubes_to_analyse = None, which_data = 'processed', mask_label = None, transform = False, plot = True, vmin = None, vmax = None, axis_ratio = None, title = None, region = None, ax = None, cbar_ax = None, fontsize = 'medium', ticksize = 'medium', xtickstep = 2, also_spectra = True):
