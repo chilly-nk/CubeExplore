@@ -25,6 +25,8 @@ class Cubes:
     self.last_loaded = time
     self.data_source = data_source
     self.data_path = data_path
+    self.metadata_path = metadata_path
+    self.cubes_to_analyse = None
     
     self.raw = {}
     self.metadata = {}
@@ -118,6 +120,7 @@ class Cubes:
 
   def get_tls_data(self, correction_data_ls):
     # Load Correction Data (TLS Basic Wavelength Scan, several scans repetitions). All scans must have the same start, stop, step
+    self.correction_LS_path = correction_data_ls
     data_files = os.listdir(correction_data_ls)
     for filename in data_files:
       measurement = filename.split('.')[0]
@@ -428,6 +431,7 @@ class Cubes:
       ax.tick_params(axis='x', rotation=45, labelsize=ticksize)
       ax.tick_params(axis='y', rotation=0, labelsize=ticksize)
 
+# COMBINE
 
   def combine(self, cubes_to_analyse = None, which_data = 'processed'):
     data_to_process = getattr(self, which_data)
@@ -446,6 +450,56 @@ class Cubes:
       self.combined_wavelengths = np.concatenate((self.combined_wavelengths, wavelengths))
     self.combined_which = which_data
     self.combined_names = list(cube_names)   
+
+# SAVE TIFF
+
+  def save_tiff(self, output_path = None, cubes_to_save = None, which_data = 'raw', combined = False, basename = None):
+  
+    if cubes_to_save is None:
+      cubes_to_save = self.names
+    fromto = os.path.splitext(cubes_to_save[0])[0] + '_' + os.path.splitext(cubes_to_save[-1])[0]
+
+    if output_path == None:
+      sample_path = os.path.dirname(self.data_path)
+      if combined == True:
+        output_path = os.path.join(sample_path, f'tiff_slices_{which_data}_combined_{fromto}')
+      else:
+        output_path = os.path.join(sample_path, f'tiff_slices_{which_data}')
+      os.makedirs(output_path, exist_ok = True)
+    else: output_path = output_path
+
+    if combined == True:
+      if self.combined is None:
+        self.combine(cubes_to_save, which_data)
+        data = self.combined
+      else: data = self.combined
+    else:
+      data = getattr(self, which_data)
+
+    if combined == True:
+      bands_num = data.shape[2]
+      for band in range(bands_num):
+        band_data = data[:, :, band]
+        filename = f'{basename}_combined_{which_data}_{fromto}_{band:04}.tif' if basename else f'Combined_{fromto}_{which_data}_{band:04}.tif'
+        img = Image.fromarray(band_data)
+        print(f"Saving band {band} to {os.path.join(output_path, filename)}...")
+        img.save(os.path.join(output_path, filename), format = "TIFF")
+    else:
+      for cubename in cubes_to_save:
+        basename = os.path.splitext(cubename)[0]
+        output_path_cube = os.path.join(output_path, basename)
+        os.makedirs(output_path_cube, exist_ok = True)
+
+        cube = data[cubename]
+        bands_num = cube.shape[2]
+        for band in range(bands_num):
+          band_data = cube[:, :, band]
+          wavelengths = self.metadata[cubename]['wavelengths']
+          wvl = wavelengths[band]
+          filename = f'{basename}_{wvl:04}.tif' if basename else f'band_{wvl:04}.tif'
+          img = Image.fromarray(band_data)
+          print(f"Saving band {band} to {os.path.join(output_path_cube, filename)}...")
+          img.save(os.path.join(output_path_cube, filename), format = "TIFF")
 
   # def read_mask(self, filepath, mask_labels = None):
     
