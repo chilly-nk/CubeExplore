@@ -272,8 +272,8 @@ class Cubes:
         ax.axhline(y = y1, color = color, linewidth = 0.7, linestyle = '--');
         ax.axhline(y = y2, color = color, linewidth = 0.7, linestyle = '--');
     
-        self.selected_rows = slice(min(y1, y2), max(y1, y2)+1)
-        self.selected_cols = slice(min(x1, x2), max(x1, x2)+1)
+        self.selected_rows = slice(min(y1, y2), max(y1, y2))
+        self.selected_cols = slice(min(x1, x2), max(x1, x2))
     
       if savefig == True:
         plt.savefig(filename, bbox_inches = 'tight', dpi = 200)
@@ -299,8 +299,8 @@ class Cubes:
       except:
         print("Oops! Seems you haven't specified any coordinates.")
     elif all(coords):
-      rows = slice(min(y1, y2), max(y1, y2)+1)
-      cols = slice(min(x1, x2), max(x1, x2)+1)
+      rows = slice(min(y1, y2), max(y1, y2))
+      cols = slice(min(x1, x2), max(x1, x2))
     else:
       print('Oops! Seems you have missed some of the coordinates (y1, y2, x1, x2).')
 
