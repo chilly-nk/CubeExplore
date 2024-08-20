@@ -53,6 +53,9 @@ class Cubes:
     self.spectra_avg = {} # By Cube
     self.spectra_combined = None # In progress
     self.spectra_combined_avg = None
+
+    if metadata_path:
+      self.get_metadata(metadata_path)
     
     if cubes_to_load:
       cube_names = sorted(cubes_to_load)
@@ -96,27 +99,33 @@ class Cubes:
       self.metadata[cubename] = md
 
     if metadata_path:
-      metadata = pd.read_csv(metadata_path)
-      metadata['excitation'] = metadata.excitation.astype(str)
-      metadata.set_index('excitation', inplace = True)
-      self.metadata_df = metadata
+      # metadata = pd.read_csv(metadata_path)
+      # metadata['excitation'] = metadata.excitation.astype(str)
+      # metadata.set_index('excitation', inplace = True)
+      # self.metadata_df = metadata
       
       for cubename in self.metadata.keys():
         ex = self.metadata[cubename]['ex']
         # self.metadata[cubename]['ex'] = round(float(ex), 1) if ex.isdigit() else ex
-        if ex not in metadata.index:
-          print(f"Attention! User has not provided metadata for cube '{ex}'.")
+        if ex not in self.metadata_df.index:
+          print(f"Attention! User has not provided metadata for cube '{ex}'")
           continue
-        em_start = int(metadata.loc[ex, 'emission_start'])
-        em_end = int(metadata.loc[ex, 'emission_end'])
-        step = int(metadata.loc[ex, 'step'])
+        em_start = int(self.metadata_df.loc[ex, 'emission_start'])
+        em_end = int(self.metadata_df.loc[ex, 'emission_end'])
+        step = int(self.metadata_df.loc[ex, 'step'])
         self.metadata[cubename]['em_start'] = em_start
         self.metadata[cubename]['em_end'] = em_end
         self.metadata[cubename]['step'] = step
-        exp = metadata.loc[ex, 'exp']
+        exp = self.metadata_df.loc[ex, 'exp']
         self.metadata[cubename]['expos_val'] = float(exp) if str(exp).isdigit() else exp
-        self.metadata[cubename]['notes'] = metadata.loc[ex, 'notes']
+        self.metadata[cubename]['notes'] = self.metadata_df.loc[ex, 'notes']
         self.metadata[cubename]['wavelengths'] = np.array(range(em_start, em_end+1, step))
+
+  def get_metadata(self, metadata_path):
+    metadata = pd.read_csv(metadata_path)
+    metadata['excitation'] = metadata.excitation.astype(str)
+    metadata.set_index('excitation', inplace = True)
+    self.metadata_df = metadata
 
   def get_tls_data(self, correction_data_ls):
     # Load Correction Data (TLS Basic Wavelength Scan, several scans repetitions). All scans must have the same start, stop, step
@@ -501,8 +510,17 @@ class Cubes:
           print(f"Saving band {band} to {os.path.join(output_path_cube, filename)}...")
           img.save(os.path.join(output_path_cube, filename), format = "TIFF")
 
-  # def read_mask(self, filepath, mask_labels = None):
-    
+def read_spectral_library(library_path):
+  components = [f'C{i}' for i in range(1, 11)]
+  spectral_library = pd.read_csv(spectral_library_path, sep = '\t', skiprows = 1)
+  spectral_library = spectral_library.iloc[:, 1:12]
+  spectral_library = spectral_library.T.reset_index().T
+  spectral_library.columns = ['wavelength'] + components
+  spectral_library = spectral_library.reset_index(drop = True)
+  spectral_library = spectral_library.astype(float)
+  return spectral_library
+
+  # def read_mask(self, filepath, mask_labels = None):  
 
   # This doesn't work yet
   # def savefile(self, name = 'cubes', path = str):
