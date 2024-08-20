@@ -512,7 +512,7 @@ class Cubes:
 
 def read_spectral_library(library_path):
   components = [f'C{i}' for i in range(1, 11)]
-  spectral_library = pd.read_csv(spectral_library_path, sep = '\t', skiprows = 1)
+  spectral_library = pd.read_csv(library_path, sep = '\t', skiprows = 1)
   spectral_library = spectral_library.iloc[:, 1:12]
   spectral_library = spectral_library.T.reset_index().T
   spectral_library.columns = ['wavelength'] + components
