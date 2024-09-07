@@ -462,7 +462,7 @@ class Cubes:
 
     if description == None:
       excitations = [cubename.split("_")[0].split(".")[0] for cubename in cube_names]
-      description = '_'.join(excitations)
+      description = f"{which_data.capitalize()}_{'_'.join(excitations)}"
 
     # self.combined[description] = None
     # self.combined_wvls[description] = np.empty((0), dtype = np.int64)
@@ -482,18 +482,59 @@ class Cubes:
 
 #SAVE TIFF
 
-  def save_tiff(self, output_path = None, cubes_to_save = None, which_data = 'raw', combined = False, basename = None):
-  
+  def save_tiff(self, cubes_to_save = None, which_data = 'raw', mode = 'cubes', destination = None, description = None):
+    
+    data = getattr(self, which_data)
+    
     if cubes_to_save is None:
-      cubes_to_save = self.names
-    fromto = os.path.splitext(cubes_to_save[0])[0] + '_' + os.path.splitext(cubes_to_save[-1])[0]
+      cubes_to_save = list(data.keys())
+
+    if destination == None:
+      destination = os.path.dirname(self.data_path)
+    if description == None:
+      cubenames_bases = [str.split(cubename, '.')[0] for cubename in cubes_to_save]
+      description = f"Tiff_{mode.capitalize()}_{which_data.capitalize()}_{'_'.join(cubenames_bases)}"
+    output_path = os.path.join(destination, description)
+    os.makedirs(output_path, exist_ok=True)
+
+    if mode == 'cubes':
+      for cubename in cubes_to_save:
+        cube = data[cubename]
+        cube_for_tiff = cube.transpose(2, 0, 1)
+        cubename_base = str.split(cubename, '.')[0]
+        cube_path = os.path.join(output_path, f'{cubename_base}.tif')
+        tiff.imwrite(cube_path, cube_for_tiff)
+    elif mode == 'slices':
+      for cubename in cubes_to_save:
+        cubename_base = str.split(cubename, '.')[0]
+        cube_path = os.path.join(output_path, cubename_base)
+        os.makedirs(cube_path, exist_ok = True)
+
+        cube = data[cubename]
+        bands_num = cube.shape[2]
+        for band in range(bands_num):
+          band_data = cube[:, :, band]
+          if which_data != 'combined':
+            wavelengths = self.metadata[cubename]['wavelengths']
+            wvl = wavelengths[band]
+          else: wvl = band
+          slicename = f'{cubename_base}_{wvl:04}.tif'
+          slicepath = os.path.join(cube_path, slicename)
+          img = Image.fromarray(band_data)
+          print(f"Saving band {band} to {slicepath}...")
+          img.save(slicepath, format = "TIFF")
+
+    
+    # if cubes_to_save is None:
+    #   cubes_to_save = self.names
+    # fromto = os.path.splitext(cubes_to_save[0])[0] + '_' + os.path.splitext(cubes_to_save[-1])[0]
 
     if output_path == None:
       sample_path = os.path.dirname(self.data_path)
       if combined == True:
-        output_path = os.path.join(sample_path, f'tiff_slices_{which_data}_combined_{fromto}')
+        output_path = os.path.join(sample_path, f'Tiff_Slices_{which_data.capitalize()}_Combined_{fromto}')
       else:
-        output_path = os.path.join(sample_path, f'tiff_slices_{which_data}')
+        output_path = os.path.join(sample_path, f'Tiff_Slices_{which_data.capitalize()}_Idividual_{fromto}')
       os.makedirs(output_path, exist_ok = True)
     else: output_path = output_path
 
@@ -531,9 +572,10 @@ class Cubes:
           img.save(os.path.join(output_path_cube, filename), format = "TIFF")
 
   def print_log(self, indent = None):
+    print('Attention! Not all functions have been connected to the log. This is a feature under development.')
     print(json.dumps(self.log, indent = indent))
 
-  def time():
+  def time(self):
     yerevantime = pytz.timezone('Asia/Yerevan')
     return datetime.now().astimezone(yerevantime).strftime('%y%m%d_%H%M%S')
 
