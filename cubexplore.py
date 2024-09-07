@@ -529,47 +529,47 @@ class Cubes:
     #   cubes_to_save = self.names
     # fromto = os.path.splitext(cubes_to_save[0])[0] + '_' + os.path.splitext(cubes_to_save[-1])[0]
 
-    if output_path == None:
-      sample_path = os.path.dirname(self.data_path)
-      if combined == True:
-        output_path = os.path.join(sample_path, f'Tiff_Slices_{which_data.capitalize()}_Combined_{fromto}')
-      else:
-        output_path = os.path.join(sample_path, f'Tiff_Slices_{which_data.capitalize()}_Idividual_{fromto}')
-      os.makedirs(output_path, exist_ok = True)
-    else: output_path = output_path
+    # if output_path == None:
+    #   sample_path = os.path.dirname(self.data_path)
+    #   if combined == True:
+    #     output_path = os.path.join(sample_path, f'Tiff_Slices_{which_data.capitalize()}_Combined_{fromto}')
+    #   else:
+    #     output_path = os.path.join(sample_path, f'Tiff_Slices_{which_data.capitalize()}_Idividual_{fromto}')
+    #   os.makedirs(output_path, exist_ok = True)
+    # else: output_path = output_path
 
-    if combined == True:
-      if self.combined is None:
-        self.combine(cubes_to_save, which_data)
-        data = self.combined
-      else: data = self.combined
-    else:
-      data = getattr(self, which_data)
+    # if combined == True:
+    #   if self.combined is None:
+    #     self.combine(cubes_to_save, which_data)
+    #     data = self.combined
+    #   else: data = self.combined
+    # else:
+    #   data = getattr(self, which_data)
 
-    if combined == True:
-      bands_num = data.shape[2]
-      for band in range(bands_num):
-        band_data = data[:, :, band]
-        filename = f'{basename}_combined_{which_data}_{fromto}_{band:04}.tif' if basename else f'Combined_{fromto}_{which_data}_{band:04}.tif'
-        img = Image.fromarray(band_data)
-        print(f"Saving band {band} to {os.path.join(output_path, filename)}...")
-        img.save(os.path.join(output_path, filename), format = "TIFF")
-    else:
-      for cubename in cubes_to_save:
-        basename = os.path.splitext(cubename)[0]
-        output_path_cube = os.path.join(output_path, basename)
-        os.makedirs(output_path_cube, exist_ok = True)
+    # if combined == True:
+    #   bands_num = data.shape[2]
+    #   for band in range(bands_num):
+    #     band_data = data[:, :, band]
+    #     filename = f'{basename}_combined_{which_data}_{fromto}_{band:04}.tif' if basename else f'Combined_{fromto}_{which_data}_{band:04}.tif'
+    #     img = Image.fromarray(band_data)
+    #     print(f"Saving band {band} to {os.path.join(output_path, filename)}...")
+    #     img.save(os.path.join(output_path, filename), format = "TIFF")
+    # else:
+    #   for cubename in cubes_to_save:
+    #     basename = os.path.splitext(cubename)[0]
+    #     output_path_cube = os.path.join(output_path, basename)
+    #     os.makedirs(output_path_cube, exist_ok = True)
 
-        cube = data[cubename]
-        bands_num = cube.shape[2]
-        for band in range(bands_num):
-          band_data = cube[:, :, band]
-          wavelengths = self.metadata[cubename]['wavelengths']
-          wvl = wavelengths[band]
-          filename = f'{basename}_{wvl:04}.tif' if basename else f'band_{wvl:04}.tif'
-          img = Image.fromarray(band_data)
-          print(f"Saving band {band} to {os.path.join(output_path_cube, filename)}...")
-          img.save(os.path.join(output_path_cube, filename), format = "TIFF")
+    #     cube = data[cubename]
+    #     bands_num = cube.shape[2]
+    #     for band in range(bands_num):
+    #       band_data = cube[:, :, band]
+    #       wavelengths = self.metadata[cubename]['wavelengths']
+    #       wvl = wavelengths[band]
+    #       filename = f'{basename}_{wvl:04}.tif' if basename else f'band_{wvl:04}.tif'
+    #       img = Image.fromarray(band_data)
+    #       print(f"Saving band {band} to {os.path.join(output_path_cube, filename)}...")
+    #       img.save(os.path.join(output_path_cube, filename), format = "TIFF")
 
   def print_log(self, indent = None):
     print('Attention! Not all functions have been connected to the log. This is a feature under development.')
