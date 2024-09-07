@@ -6,6 +6,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import pickle
 import pytz
+import json
 import tifffile as tiff
 import spectral as spy
 import spectral.io.envi as envi
@@ -25,11 +26,13 @@ class Cubes:
     self.log = {}
     self.log[time] = {}
     self.log[time]['action'] = 'Dataset loaded.'
+    
+    self.data_source = data_source
     self.log[time]['data_source'] = data_source
-    self.log[time]['data_path'] = data_path
     self.data_path = data_path
-    self.log[time]['metadata_path'] = metadata_path
+    self.log[time]['data_path'] = data_path
     self.metadata_path = metadata_path
+    self.log[time]['metadata_path'] = metadata_path
     self.log[time]['cubes_loaded'] = cubes_to_load if cubes_to_load is not None else 'All'
     
     self.cubes_to_analyse = None
@@ -526,6 +529,15 @@ class Cubes:
           img = Image.fromarray(band_data)
           print(f"Saving band {band} to {os.path.join(output_path_cube, filename)}...")
           img.save(os.path.join(output_path_cube, filename), format = "TIFF")
+
+  def print_log(self, indent = None):
+    print(json.dumps(self.log, indent = indent))
+
+  def time():
+    yerevantime = pytz.timezone('Asia/Yerevan')
+    return datetime.now().astimezone(yerevantime).strftime('%y%m%d_%H%M%S')
+
+
 
 def read_spectral_library(library_path):
   components = [f'C{i}' for i in range(1, 11)]
