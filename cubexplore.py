@@ -21,11 +21,17 @@ class Cubes:
   def __init__(self, data_path, metadata_path = None, cubes_to_load = None, data_source = 'nuance'):
     
     yerevantime = pytz.timezone('Asia/Yerevan')
-    time = datetime.now().astimezone(yerevantime).strftime('%Y-%m-%d %H:%M:%S')
-    self.last_loaded = time
-    self.data_source = data_source
+    time = datetime.now().astimezone(yerevantime).strftime('%y%m%d_%H%M%S')
+    self.log = {}
+    self.log[time] = {}
+    self.log[time]['action'] = 'Dataset loaded.'
+    self.log[time]['data_source'] = data_source
+    self.log[time]['data_path'] = data_path
     self.data_path = data_path
+    self.log[time]['metadata_path'] = metadata_path
     self.metadata_path = metadata_path
+    self.log[time]['cubes_loaded'] = cubes_to_load if cubes_to_load is not None else 'All'
+    
     self.cubes_to_analyse = None
     
     self.raw = {}
@@ -35,10 +41,12 @@ class Cubes:
     self.processed = {}
     self.normalized = {}
     
-    self.combined = None
-    self.combined_wavelengths = np.empty((0), dtype = np.int64)
-    self.combined_which = None
-    self.combined_names = None
+    self.combined = {}
+    # self.combined_wavelengths = np.empty((0), dtype = np.int64)
+    self.combined_wvls = {}
+    self.combined_metadata = {}
+    # self.combined_which = None
+    # self.combined_names = None
 
     self.selected_rows = None
     self.selected_cols = None
@@ -440,27 +448,36 @@ class Cubes:
       ax.tick_params(axis='x', rotation=45, labelsize=ticksize)
       ax.tick_params(axis='y', rotation=0, labelsize=ticksize)
 
-# COMBINE
+#COMBINE
 
-  def combine(self, cubes_to_analyse = None, which_data = 'processed'):
-    data_to_process = getattr(self, which_data)
+  def combine(self, cubes_to_analyse = None, which_data = 'processed', description = None):
+    data = getattr(self, which_data)
     if cubes_to_analyse:
       cube_names = cubes_to_analyse
     else:
-      cube_names = data_to_process.keys()
+      cube_names = list(data.keys())
+
+    if description == None:
+      excitations = [cubename.split("_")[0].split(".")[0] for cubename in cube_names]
+      description = '_'.join(excitations)
+
+    # self.combined[description] = None
+    # self.combined_wvls[description] = np.empty((0), dtype = np.int64)
+    self.combined_metadata[description] = {}
+    self.combined_metadata[description]['wavelengths'] = np.empty((0), dtype = np.int64)
 
     for cubename in cube_names:
-      print(f"Getting '{cubename}")
-      cube = data_to_process[cubename]
+      print(f"Getting '{cubename}' from '{which_data}' data")
+      cube = data[cubename]
       wavelengths = self.metadata[cubename]['wavelengths']
-      if self.combined is None:
-        self.combined = np.empty((cube.shape[0], cube.shape[1], 0), dtype = np.float32)
-      self.combined = np.concatenate((self.combined, cube), axis = 2)
-      self.combined_wavelengths = np.concatenate((self.combined_wavelengths, wavelengths))
-    self.combined_which = which_data
-    self.combined_names = list(cube_names)   
+      if description not in self.combined:
+        self.combined[description] = np.empty((cube.shape[0], cube.shape[1], 0), dtype = np.float32)
+      self.combined[description] = np.concatenate((self.combined[description], cube), axis = 2)
+      self.combined_metadata[description]['wavelengths'] = np.concatenate((self.combined_metadata[description]['wavelengths'], wavelengths))
+    self.combined_metadata[description]['source'] = which_data
+    self.combined_metadata[description]['cubes'] = cube_names
 
-# SAVE TIFF
+#SAVE TIFF
 
   def save_tiff(self, output_path = None, cubes_to_save = None, which_data = 'raw', combined = False, basename = None):
   
