@@ -54,8 +54,8 @@ class Cubes:
     self.selected_rows = None
     self.selected_cols = None
     
-    self.pcs_bycube = {}
-    self.pcs_bycube_transformed = {}
+    self.pcs = {}
+    self.pcs_transformed = {}
 
     self.mask = None
     self.mask_labels = {}
@@ -351,9 +351,15 @@ class Cubes:
       cube_reshaped = np.reshape(cube, (cube.shape[0]*cube.shape[1], cube.shape[2]))
       self.reshaped[cubename] = cube_reshaped
 
-  def get_pcs_bycube(self, components = 3, which_data = 'processed', extra_transform = True, trans_factor = 0.5, trans_inplace = False):
+  def get_pcs(self, cubes_to_analyse = None, components = 3, which_data = 'raw', df = False, extra_transform = False, trans_factor = 0.5, trans_inplace = False):
+    
     data_to_process = getattr(self, which_data)
-    for cubename in data_to_process:
+    if cubes_to_analyse:
+      cube_names = cubes_to_analyse
+    else:
+      cube_names = list(data_to_process.keys())
+    
+    for cubename in cube_names:
       cube = data_to_process[cubename]
       cube_reshaped = cube.reshape(cube.shape[0]*cube.shape[1], cube.shape[2]).astype(np.float64)
       pca = PCA(n_components = components)
@@ -361,12 +367,18 @@ class Cubes:
       
       if extra_transform == True:
         PCs_transformed = np.sign(PCs) * np.abs(PCs) ** trans_factor
-        self.pcs_bycube_transformed[cubename] = PCs_transformed
+        if df == True:
+          columns = [f'PC{comp}' for comp in range(1, components+1)]
+          PCs_transformed = pd.DataFrame(PCs, columns = columns)
+        self.pcs_transformed[cubename] = PCs_transformed
       
       if trans_inplace == True:
         continue
       else:
-        self.pcs_bycube[cubename] = PCs
+        if df == True:
+          columns = [f'PC{comp}' for comp in range(1, components+1)]
+          PCs = pd.DataFrame(PCs, columns = columns)
+        self.pcs[cubename] = PCs
 
   def normalize(self, which = 'processed'):
     data_to_process = getattr(self, which)
@@ -390,7 +402,7 @@ class Cubes:
     print(f"Assigned Labels: {mask_labels}")
     plt.imshow(img_arr);
 
-  def get_eem(self, cubes_to_analyse = None, which_data = 'processed', mask_label = None, transform = False, plot = True, vmin = None, vmax = None, axis_ratio = None, title = None, region = None, ax = None, cbar_ax = None, fontsize = 'medium', ticksize = 'medium', xtickstep = 2, also_spectra = True):
+  def get_eem(self, cubes_to_analyse = None, which_data = 'raw', mask_label = None, transform = False, plot = True, vmin = None, vmax = None, axis_ratio = None, title = None, region = None, ax = None, cbar_ax = None, fontsize = 'medium', ticksize = 'medium', xtickstep = 2, also_spectra = True):
       
     data_to_process = getattr(self, which_data)
     
