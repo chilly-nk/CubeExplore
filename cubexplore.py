@@ -239,7 +239,7 @@ class Cubes:
       print('Correction of cubes by spectral sensitivity done. See corrected cubes in attribute self.processed .\n--------------------------------')
     else: print('Attention! No data correction by spectral sensitivity took place.\n--------------------------------') 
 
-  def view(self, cube_to_view: str, y1 = None, y2 = None, x1 = None, x2 = None, blue_bands = range(3, 9), green_bands = range(13, 19), red_bands = range(23, 29), ax = None, color = 'blue', pic_only = False, title = None, fontsize = 12, filename = None, savefig = False):
+  def view(self, cube_to_view: str, y1 = None, y2 = None, x1 = None, x2 = None, blue_bands = range(3, 9), green_bands = range(13, 19), red_bands = range(23, 29), ax = None, color = 'red', pic_only = False, title = None, fontsize = 12, filename = None, savefig = False):
     
     cube = self.raw[cube_to_view]
     if filename:
@@ -343,15 +343,15 @@ class Cubes:
         cube_cropped = cube[rows, cols, :]
         self.normalized[cubename] = cube_cropped
 
-  def reshape_bycube(self, which_data = 'processed'):
+  def reshape(self, which_data = 'raw'):
     data_to_process = getattr(self, which_data)
-    self.reshaped_bycube_input = which_data
+    self.reshaped_input = which_data
     for cubename in data_to_process.keys():
       cube = data_to_process[cubename]
       cube_reshaped = np.reshape(cube, (cube.shape[0]*cube.shape[1], cube.shape[2]))
       self.reshaped[cubename] = cube_reshaped
 
-  def get_pcs(self, cubes_to_analyse = None, components = 3, which_data = 'raw', df = False, extra_transform = False, trans_factor = 0.5, trans_inplace = False):
+  def get_pcs(self, cubes_to_analyse = None, components = 3, which_data = 'raw', df = False, mask_array = None, extra_transform = False, trans_factor = 0.5, trans_inplace = False):
     
     data_to_process = getattr(self, which_data)
     if cubes_to_analyse:
@@ -362,6 +362,8 @@ class Cubes:
     for cubename in cube_names:
       cube = data_to_process[cubename]
       cube_reshaped = cube.reshape(cube.shape[0]*cube.shape[1], cube.shape[2]).astype(np.float64)
+      if mask_array is not None:
+        cube_reshaped = cube_reshaped[mask_array]
       pca = PCA(n_components = components)
       PCs = pca.fit_transform(cube_reshaped)
       
@@ -380,13 +382,43 @@ class Cubes:
           PCs = pd.DataFrame(PCs, columns = columns)
         self.pcs[cubename] = PCs
 
-  def normalize(self, which = 'processed'):
-    data_to_process = getattr(self, which)
-    for cubename in data_to_process.keys():
-      cube = data_to_process[cubename]
-      cube_max = np.max(cube, axis = 2, keepdims = True) + np.finfo(float).eps
-      cube_normalized = cube / cube_max
-      self.normalized[cubename] = cube_normalized
+  # def get_pcs_subset(self, ):
+  #   data_to_process = getattr(self, which_data)
+  #   if cubes_to_analyse:
+  #     cube_names = cubes_to_analyse
+  #   else:
+  #     cube_names = list(data_to_process.keys())
+
+#============ NORMALIZE ===============
+
+  def normalize(self, cubes_to_analyse = None, which_data = 'raw', how = 'to_max'):
+    
+    data = getattr(self, which_data)
+    if cubes_to_analyse:
+      cube_names = cubes_to_analyse
+    else:
+      cube_names = list(data.keys())
+    
+    if how == 'to_max':
+      for cubename in cube_names:
+        cube = data[cubename]
+        cube_max = np.max(cube, axis = 2, keepdims = True) + np.finfo(float).eps
+        cube_normalized = cube / cube_max
+        self.normalized[cubename] = cube_normalized
+      self.log[time()] = {'normalize_to_max': {'which_data': which_data, 'cubes_to_analyse': cube_names}}
+    
+    elif how == 'snv':
+      for cubename in cube_names:
+        cube = data[cubename]
+        cube_avg = np.mean(cube, axis = 2, keepdims = True)
+        cube_std = np.std(cube, axis = 2, keepdims = True)
+        cube_snv = (cube - cube_avg) / cube_std
+        self.normalized[cubename] = cube_snv
+      self.log[time()] = {'SNV': {'which_data': which_data, 'cubes_to_analyse': cube_names}}
+
+    
+
+#============= MASK ===============
 
   def read_mask(self, filepath, mask_labels = None):
     img = Image.open(filepath)
@@ -401,6 +433,8 @@ class Cubes:
     print(f"Values in Mask: {np.unique(img_arr)}")
     print(f"Assigned Labels: {mask_labels}")
     plt.imshow(img_arr);
+
+#=============== EEM ===============
 
   def get_eem(self, cubes_to_analyse = None, which_data = 'raw', mask_label = None, transform = False, plot = True, vmin = None, vmax = None, axis_ratio = None, title = None, region = None, ax = None, cbar_ax = None, fontsize = 'medium', ticksize = 'medium', xtickstep = 2, also_spectra = True):
       
@@ -463,9 +497,9 @@ class Cubes:
       ax.tick_params(axis='x', rotation=45, labelsize=ticksize)
       ax.tick_params(axis='y', rotation=0, labelsize=ticksize)
 
-#COMBINE
+#============== COMBINE =====================
 
-  def combine(self, cubes_to_analyse = None, which_data = 'processed', description = None):
+  def combine(self, cubes_to_analyse = None, which_data = 'raw', description = None):
     data = getattr(self, which_data)
     if cubes_to_analyse:
       cube_names = cubes_to_analyse
@@ -492,7 +526,7 @@ class Cubes:
     self.combined_metadata[description]['source'] = which_data
     self.combined_metadata[description]['cubes'] = cube_names
 
-#SAVE TIFF
+#============= SAVE TIFF =================
 
   def save_tiff(self, cubes_to_save = None, which_data = 'raw', mode = 'cubes', destination = None, description = None):
     
