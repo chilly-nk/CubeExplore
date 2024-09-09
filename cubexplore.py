@@ -45,11 +45,8 @@ class Cubes:
     self.normalized = {}
     
     self.combined = {}
-    # self.combined_wavelengths = np.empty((0), dtype = np.int64)
     self.combined_wvls = {}
     self.combined_metadata = {}
-    # self.combined_which = None
-    # self.combined_names = None
 
     self.selected_rows = None
     self.selected_cols = None
@@ -310,6 +307,8 @@ class Cubes:
     
     # plt.show()
 
+#============ CROP ==================
+
   def crop(self, y1 = None, y2 = None, x1 = None, x2 = None):
     coords = [y1, y2, x1, x2]
     if all(coord is None for coord in coords):
@@ -342,6 +341,9 @@ class Cubes:
         cube = self.normalized[cubename]
         cube_cropped = cube[rows, cols, :]
         self.normalized[cubename] = cube_cropped
+
+    if self.mask is not None:
+      self.mask = self.mask[rows, cols]
 
   def reshape(self, which_data = 'raw'):
     data_to_process = getattr(self, which_data)
