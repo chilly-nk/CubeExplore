@@ -21,8 +21,7 @@ ij = imagej.init('sc.fiji:fiji')
 class Cubes:
   def __init__(self, data_path, metadata_path = None, cubes_to_load = None, data_source = 'nuance'):
     
-    yerevantime = pytz.timezone('Asia/Yerevan')
-    time = datetime.now().astimezone(yerevantime).strftime('%y%m%d_%H%M%S')
+    time = self.time()
     self.log = {}
     self.log[time] = {}
     self.log[time]['action'] = 'Dataset loaded.'
@@ -236,6 +235,8 @@ class Cubes:
       print('Correction of cubes by spectral sensitivity done. See corrected cubes in attribute self.processed .\n--------------------------------')
     else: print('Attention! No data correction by spectral sensitivity took place.\n--------------------------------') 
 
+#============= VIEW ======================
+
   def view(self, cube_to_view: str, y1 = None, y2 = None, x1 = None, x2 = None, blue_bands = range(3, 9), green_bands = range(13, 19), red_bands = range(23, 29), ax = None, color = 'red', pic_only = False, title = None, fontsize = 12, filename = None, savefig = False):
     
     cube = self.raw[cube_to_view]
@@ -407,7 +408,7 @@ class Cubes:
         cube_max = np.max(cube, axis = 2, keepdims = True) + np.finfo(float).eps
         cube_normalized = cube / cube_max
         self.normalized[cubename] = cube_normalized
-      self.log[time()] = {'normalize_to_max': {'which_data': which_data, 'cubes_to_analyse': cube_names}}
+      self.log[self.time()] = {'normalize_to_max': {'which_data': which_data, 'cubes_to_analyse': cube_names}}
     
     elif how == 'snv':
       for cubename in cube_names:
@@ -416,7 +417,7 @@ class Cubes:
         cube_std = np.std(cube, axis = 2, keepdims = True)
         cube_snv = (cube - cube_avg) / cube_std
         self.normalized[cubename] = cube_snv
-      self.log[time()] = {'SNV': {'which_data': which_data, 'cubes_to_analyse': cube_names}}
+      self.log[self.time()] = {'SNV': {'which_data': which_data, 'cubes_to_analyse': cube_names}}
 
     
 
