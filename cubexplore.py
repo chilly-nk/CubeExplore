@@ -518,6 +518,9 @@ class Cubes:
     self.combined_metadata[description] = {}
     self.combined_metadata[description]['wavelengths'] = np.empty((0), dtype = np.int64)
 
+    if description in self.combined:
+      del self.combined[description]
+
     for cubename in cube_names:
       print(f"Getting '{cubename}' from '{which_data}' data")
       cube = data[cubename]
