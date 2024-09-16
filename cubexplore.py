@@ -14,9 +14,9 @@ from datetime import datetime
 from PIL import Image
 from sklearn.decomposition import PCA
 
-# Initiate pyimagej (at fiji mode)
-import imagej
-ij = imagej.init('sc.fiji:fiji')
+# # Initiate pyimagej (at fiji mode)
+# import imagej
+# ij = imagej.init('sc.fiji:fiji')
 
 class Cubes:
   def __init__(self, data_path, metadata_path = None, cubes_to_load = None, data_source = 'nuance'):
@@ -235,7 +235,7 @@ class Cubes:
       print('Correction of cubes by spectral sensitivity done. See corrected cubes in attribute self.processed .\n--------------------------------')
     else: print('Attention! No data correction by spectral sensitivity took place.\n--------------------------------') 
 
-#============= VIEW ======================
+#=========== VIEW ======================
 
   def view(self, cube_to_view: str, y1 = None, y2 = None, x1 = None, x2 = None, blue_bands = range(3, 9), green_bands = range(13, 19), red_bands = range(23, 29), ax = None, color = 'red', pic_only = False, title = None, fontsize = 12, filename = None, savefig = False):
     
@@ -308,7 +308,7 @@ class Cubes:
     
     # plt.show()
 
-#============ CROP ==================
+#========= CROP ==================
 
   def crop(self, y1 = None, y2 = None, x1 = None, x2 = None):
     coords = [y1, y2, x1, x2]
@@ -392,7 +392,7 @@ class Cubes:
   #   else:
   #     cube_names = list(data_to_process.keys())
 
-#============ NORMALIZE ===============
+#========= NORMALIZE ===============
 
   def normalize(self, cubes_to_analyse = None, which_data = 'raw', how = 'to_max'):
     
@@ -410,7 +410,7 @@ class Cubes:
         self.normalized[cubename] = cube_normalized
       self.log[self.time()] = {'normalize_to_max': {'which_data': which_data, 'cubes_to_analyse': cube_names}}
     
-    elif how == 'snv':
+    elif how == 'snv': # Tested: https://colab.research.google.com/drive/1-x13RJ7qjf-PD-BaR3gzvTUdnr-Xqhax#scrollTo=_6j1pCY_jdfp&line=1&uniqifier=1
       for cubename in cube_names:
         cube = data[cubename]
         cube_avg = np.mean(cube, axis = 2, keepdims = True)
@@ -419,6 +419,14 @@ class Cubes:
         self.normalized[cubename] = cube_snv
       self.log[self.time()] = {'SNV': {'which_data': which_data, 'cubes_to_analyse': cube_names}}
 
+    elif how == 'zscale':
+      for cubename in cube_names:
+        cube = data[cubename]
+        cube_avg = np.mean(cube, axis = (0, 1), keepdims = True)
+        cube_std = np.std(cube, axis = (0, 1), keepdims = True)
+        cube_zscaled = (cube - cube_avg) / cube_std
+        self.normalized[cubename] = cube_zscaled
+      self.log[self.time()] = {'ZScale': {'which_data': which_data, 'cubes_to_analyse': cube_names}}
     
 
 #============= MASK ===============
