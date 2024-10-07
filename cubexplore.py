@@ -14,7 +14,7 @@ from datetime import datetime
 from PIL import Image
 from sklearn.decomposition import PCA
 
-# # Initiate pyimagej (at fiji mode)
+# Initiate pyimagej (at fiji mode)
 # import imagej
 # ij = imagej.init('sc.fiji:fiji')
 
@@ -354,6 +354,8 @@ class Cubes:
       cube_reshaped = np.reshape(cube, (cube.shape[0]*cube.shape[1], cube.shape[2]))
       self.reshaped[cubename] = cube_reshaped
 
+#========== PCA ======================
+
   def get_pcs(self, cubes_to_analyse = None, components = 3, which_data = 'raw', df = False, mask_array = None, extra_transform = False, trans_factor = 0.5, trans_inplace = False):
     
     data_to_process = getattr(self, which_data)
@@ -533,6 +535,7 @@ class Cubes:
       print(f"Getting '{cubename}' from '{which_data}' data")
       cube = data[cubename]
       wavelengths = self.metadata[cubename]['wavelengths']
+      wavelengths = wavelengths if wavelengths is not None else np.array([])
       if description not in self.combined:
         self.combined[description] = np.empty((cube.shape[0], cube.shape[1], 0), dtype = np.float32)
       self.combined[description] = np.concatenate((self.combined[description], cube), axis = 2)
