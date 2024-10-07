@@ -53,6 +53,8 @@ class Cubes:
     self.pcs = {}
     self.pcs_transformed = {}
 
+    self.scaled_data = {}
+
     self.mask = None
     self.mask_labels = {}
 
@@ -360,7 +362,7 @@ class Cubes:
     
     data_to_process = getattr(self, which_data)
     if cubes_to_analyse:
-      cube_names = cubes_to_analyse
+      cube_names = ensure_list(cubes_to_analyse)
     else:
       cube_names = list(data_to_process.keys())
     
@@ -400,7 +402,7 @@ class Cubes:
     
     data = getattr(self, which_data)
     if cubes_to_analyse:
-      cube_names = cubes_to_analyse
+      cube_names = ensure_list(cubes_to_analyse)
     else:
       cube_names = list(data.keys())
     
@@ -429,7 +431,27 @@ class Cubes:
         cube_zscaled = (cube - cube_avg) / cube_std
         self.normalized[cubename] = cube_zscaled
       self.log[self.time()] = {'ZScale': {'which_data': which_data, 'cubes_to_analyse': cube_names}}
-    
+
+#============== Z-SCALE 2D DATA ============================
+
+  def scale(self, labels: list = None, which_data = 'pcs', how = 'mean'):
+  
+    self.scaled_data = {}
+    data_dict = getattr(self, which_data)
+    if labels:
+      labels = ensure_list(labels)
+    else:
+      labels = list(data_dict.keys())
+
+    for label in labels:
+      data = data_dict[label]
+      if how == 'mean':
+        data_stat = data.mean(axis = 0)
+      elif how == 'median':
+        data_stat = data.median(axis = 0)
+      data = (data - data_stat) / data.std(axis=0)
+      
+      self.scaled_data[label] = data
 
 #============= MASK ===============
 
@@ -454,7 +476,7 @@ class Cubes:
     data_to_process = getattr(self, which_data)
     
     if cubes_to_analyse:
-      cube_names = cubes_to_analyse
+      cube_names = ensure_list(cubes_to_analyse)
     else:
       cube_names = self.names
 
@@ -515,7 +537,7 @@ class Cubes:
   def combine(self, cubes_to_analyse = None, which_data = 'raw', description = None):
     data = getattr(self, which_data)
     if cubes_to_analyse:
-      cube_names = cubes_to_analyse
+      cube_names = ensure_list(cubes_to_analyse)
     else:
       cube_names = list(data.keys())
 
@@ -549,26 +571,28 @@ class Cubes:
     
     data = getattr(self, which_data)
     
-    if cubes_to_save is None:
-      cubes_to_save = list(data.keys())
+    if cubes_to_save:
+      cube_names = ensure_list(cubes_to_save)
+    else:
+      cube_names = list(data.keys())
 
     if destination == None:
       destination = os.path.dirname(self.data_path)
     if description == None:
-      cubenames_bases = [str.split(cubename, '.')[0] for cubename in cubes_to_save]
+      cubenames_bases = [str.split(cubename, '.')[0] for cubename in cube_names]
       description = f"Tiff_{mode.capitalize()}_{which_data.capitalize()}_{'_'.join(cubenames_bases)}"
     output_path = os.path.join(destination, description)
     os.makedirs(output_path, exist_ok=True)
 
     if mode == 'cubes':
-      for cubename in cubes_to_save:
+      for cubename in cube_names:
         cube = data[cubename]
         cube_for_tiff = cube.transpose(2, 0, 1)
         cubename_base = str.split(cubename, '.')[0]
         cube_path = os.path.join(output_path, f'{cubename_base}.tif')
         tiff.imwrite(cube_path, cube_for_tiff)
     elif mode == 'slices':
-      for cubename in cubes_to_save:
+      for cubename in cube_names:
         cubename_base = str.split(cubename, '.')[0]
         cube_path = os.path.join(output_path, cubename_base)
         os.makedirs(cube_path, exist_ok = True)
@@ -587,53 +611,6 @@ class Cubes:
           print(f"Saving band {band} to {slicepath}...")
           img.save(slicepath, format = "TIFF")
 
-    
-    # if cubes_to_save is None:
-    #   cubes_to_save = self.names
-    # fromto = os.path.splitext(cubes_to_save[0])[0] + '_' + os.path.splitext(cubes_to_save[-1])[0]
-
-    # if output_path == None:
-    #   sample_path = os.path.dirname(self.data_path)
-    #   if combined == True:
-    #     output_path = os.path.join(sample_path, f'Tiff_Slices_{which_data.capitalize()}_Combined_{fromto}')
-    #   else:
-    #     output_path = os.path.join(sample_path, f'Tiff_Slices_{which_data.capitalize()}_Idividual_{fromto}')
-    #   os.makedirs(output_path, exist_ok = True)
-    # else: output_path = output_path
-
-    # if combined == True:
-    #   if self.combined is None:
-    #     self.combine(cubes_to_save, which_data)
-    #     data = self.combined
-    #   else: data = self.combined
-    # else:
-    #   data = getattr(self, which_data)
-
-    # if combined == True:
-    #   bands_num = data.shape[2]
-    #   for band in range(bands_num):
-    #     band_data = data[:, :, band]
-    #     filename = f'{basename}_combined_{which_data}_{fromto}_{band:04}.tif' if basename else f'Combined_{fromto}_{which_data}_{band:04}.tif'
-    #     img = Image.fromarray(band_data)
-    #     print(f"Saving band {band} to {os.path.join(output_path, filename)}...")
-    #     img.save(os.path.join(output_path, filename), format = "TIFF")
-    # else:
-    #   for cubename in cubes_to_save:
-    #     basename = os.path.splitext(cubename)[0]
-    #     output_path_cube = os.path.join(output_path, basename)
-    #     os.makedirs(output_path_cube, exist_ok = True)
-
-    #     cube = data[cubename]
-    #     bands_num = cube.shape[2]
-    #     for band in range(bands_num):
-    #       band_data = cube[:, :, band]
-    #       wavelengths = self.metadata[cubename]['wavelengths']
-    #       wvl = wavelengths[band]
-    #       filename = f'{basename}_{wvl:04}.tif' if basename else f'band_{wvl:04}.tif'
-    #       img = Image.fromarray(band_data)
-    #       print(f"Saving band {band} to {os.path.join(output_path_cube, filename)}...")
-    #       img.save(os.path.join(output_path_cube, filename), format = "TIFF")
-
   def print_log(self, indent = None):
     print('Attention! Not all functions have been connected to the log. This is a feature under development.')
     print(json.dumps(self.log, indent = indent))
@@ -641,8 +618,6 @@ class Cubes:
   def time(self):
     yerevantime = pytz.timezone('Asia/Yerevan')
     return datetime.now().astimezone(yerevantime).strftime('%y%m%d_%H%M%S')
-
-
 
 def read_spectral_library(library_path):
   components = [f'C{i}' for i in range(1, 11)]
@@ -653,6 +628,14 @@ def read_spectral_library(library_path):
   spectral_library = spectral_library.reset_index(drop = True)
   spectral_library = spectral_library.astype(float)
   return spectral_library
+
+def ensure_list(input_value):
+  if isinstance(input_value, str):
+    return [input_value]
+  elif isinstance(input_value, list):
+    return input_value
+  else:
+    raise TypeError("Input must be either a string or a list")
 
   # def read_mask(self, filepath, mask_labels = None):  
 
