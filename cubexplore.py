@@ -47,6 +47,8 @@ class Cubes:
     self.combined_wvls = {}
     self.combined_metadata = {}
 
+    self.averaged = {}
+
     self.selected_rows = None
     self.selected_cols = None
     
@@ -564,6 +566,28 @@ class Cubes:
       self.combined_metadata[description]['wavelengths'] = np.concatenate((self.combined_metadata[description]['wavelengths'], wavelengths))
     self.combined_metadata[description]['source'] = which_data
     self.combined_metadata[description]['cubes'] = cube_names
+
+#============ AVERAGE ======================
+  
+  def average(self, cubes_to_analyse = None, which_data = 'raw', description = None):
+    data = getattr(self, which_data)
+    if cubes_to_analyse:
+      cube_names = ensure_list(cubes_to_analyse)
+    else:
+      cube_names = list(data.keys())
+
+    if description == None:
+      excitations = [cubename.split("_")[0].split(".")[0] for cubename in cube_names]
+      description = f"{which_data.capitalize()}_{'_'.join(excitations)}"
+
+    cubes_list = []
+    for cubename in cube_names:
+      cube = data[cubename]
+      cubes_list.append(cube)
+    
+    hypercube = np.stack(cubes_list, axis = 0)
+    cubes_average = np.mean(hypercube, axis = 0)
+    self.averaged[description] = cubes_average
 
 #============= SAVE TIFF =================
 
