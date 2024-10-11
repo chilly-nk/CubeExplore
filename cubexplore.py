@@ -655,6 +655,43 @@ def read_spectral_library(library_path):
   spectral_library = spectral_library.astype(float)
   return spectral_library
 
+def get_nuance_mask(unmixings_path, components = 3, component_values: dict = {1:200, 2:100, 3:0}, composite = False):
+  num_components = components
+  substrings = [f'C{component}' for component in range(1, num_components+1)]
+
+  filenames = os.listdir(unmixings_path)
+  component_files = [filename for filename in filenames if any(sub in filename for sub in substrings)]
+
+  imar_list = []
+  for component in sorted(component_files):
+    component_path = os.path.join(unmixings_path, component)
+    img = Image.open(component_path)
+    imar = np.array(img)[:, :, 0]
+    imar_list.append(imar)
+  my_composite = np.stack(imar_list, axis = 2)
+  my_mask = np.argmax(my_composite, axis = 2)
+
+  for component, value in component_values.items():
+    my_mask[my_mask == component-1] = value
+
+  if composite == True:
+    return my_mask, my_composite
+  else:
+    return my_mask
+
+def read_mask(mask_path, new_values: dict = None, silent = True):
+  img = Image.open(mask_path)
+  mask = np.array(img)
+  if silent == False:
+    print(f"Old Values: {np.unique(mask)}")
+  
+  if new_values is not None:
+    for old_value, new_value in new_values.items():
+      mask[mask == old_value] = new_value
+    if silent == False:
+      print(f"New Values: {np.unique(mask)}")
+  return mask
+
 def ensure_list(input_value):
   if isinstance(input_value, str):
     return [input_value]
