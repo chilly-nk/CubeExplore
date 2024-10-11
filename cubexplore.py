@@ -587,7 +587,9 @@ class Cubes:
     
     hypercube = np.stack(cubes_list, axis = 0)
     cubes_average = np.mean(hypercube, axis = 0)
+    
     self.averaged[description] = cubes_average
+    self.metadata[description] = {'wavelengths':self.metadata[self.names[0]]['wavelengths']}
 
 #============= SAVE TIFF =================
 
