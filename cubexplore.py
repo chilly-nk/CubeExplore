@@ -432,7 +432,7 @@ class Cubes:
         self.normalized[cubename] = cube_zscaled
       self.log[self.time()] = {'ZScale': {'which_data': which_data, 'cubes_to_analyse': cube_names}}
 
-#============== Z-SCALE 2D DATA ============================
+#========== Z-SCALE 2D DATA ============================
 
   def scale(self, labels: list = None, which_data = 'pcs', how = 'mean'):
   
@@ -448,7 +448,7 @@ class Cubes:
       if how == 'mean':
         data_stat = data.mean(axis = 0)
       elif how == 'median':
-        data_stat = data.median(axis = 0)
+        data_stat = np.median(data, axis = 0)
       data = (data - data_stat) / data.std(axis=0)
       
       self.scaled_data[label] = data
