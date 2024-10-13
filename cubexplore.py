@@ -46,6 +46,8 @@ class Cubes:
     self.combined = {}
     self.combined_wvls = {}
     self.combined_metadata = {}
+    
+    self.reshaped = {}
 
     self.averaged = {}
 
@@ -534,7 +536,7 @@ class Cubes:
       ax.tick_params(axis='x', rotation=45, labelsize=ticksize)
       ax.tick_params(axis='y', rotation=0, labelsize=ticksize)
 
-#============== COMBINE =====================
+#============ COMBINE =====================
 
   def combine(self, cubes_to_analyse = None, which_data = 'raw', description = None):
     data = getattr(self, which_data)
@@ -556,7 +558,7 @@ class Cubes:
       del self.combined[description]
 
     for cubename in cube_names:
-      print(f"Getting '{cubename}' from '{which_data}' data")
+      print(f"Combining '{cubename}' from '{which_data}' data")
       cube = data[cubename]
       wavelengths = self.metadata[cubename]['wavelengths']
       wavelengths = wavelengths if wavelengths is not None else np.array([])
