@@ -582,13 +582,13 @@ class Cubes:
       excitations = [cubename.split("_")[0].split(".")[0] for cubename in cube_names]
       description = f"{which_data.capitalize()}_{'_'.join(excitations)}"
 
-    cubes_list = []
-    for cubename in cube_names:
-      cube = data[cubename]
-      cubes_list.append(cube)
-    
-    hypercube = np.stack(cubes_list, axis = 0)
-    cubes_average = np.mean(hypercube, axis = 0)
+      cubes_list = []
+      for cubename in cube_names:
+        cube = data[cubename]
+        cubes_list.append(cube)
+      
+      hypercube = np.stack(cubes_list, axis = 0)
+      cubes_average = np.mean(hypercube, axis = 0)
     
     self.averaged[description] = cubes_average
     self.metadata[description] = {'wavelengths':self.metadata[self.names[0]]['wavelengths']}
