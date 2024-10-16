@@ -50,6 +50,7 @@ class Cubes:
     self.reshaped = {}
 
     self.averaged = {}
+    self.summed = {}
 
     self.selected_rows = None
     self.selected_cols = None
@@ -473,7 +474,7 @@ class Cubes:
     print(f"Assigned Labels: {mask_labels}")
     plt.imshow(img_arr);
 
-#=============== EEM ===============
+#========== EEM ===============
 
   def get_eem(self, cubes_to_analyse = None, which_data = 'raw', mask_label = None, transform = False, plot = True, vmin = None, vmax = None, axis_ratio = None, title = None, region = None, ax = None, cbar_ax = None, fontsize = 'medium', ticksize = 'medium', xtickstep = 2, also_spectra = True):
       
@@ -592,6 +593,8 @@ class Cubes:
     
     self.averaged[description] = cubes_average
     self.metadata[description] = {'wavelengths':self.metadata[self.names[0]]['wavelengths']}
+    print(f"Cubes averaged: {cube_names}")
+    print(f"Find averaged data (label = '{description}') in cubes.averaged attribute.")
 
 #============= SUM =======================
   
@@ -616,6 +619,8 @@ class Cubes:
     
     self.summed[description] = cubes_sum
     self.metadata[description] = {'wavelengths':self.metadata[self.names[0]]['wavelengths']}
+    print(f"Cubes summed: {cube_names}")
+    print(f"Find summed data (label = '{description}') in cubes.summed attribute.")
 
 #============= SAVE TIFF =================
 
@@ -709,7 +714,7 @@ def read_mask(mask_path, new_values: dict = None, silent = True):
   img = Image.open(mask_path)
   mask = np.array(img)
   if silent == False:
-    print(f"Old Values: {np.unique(mask)}")
+    print(f"Original Values: {np.unique(mask)}")
   
   if new_values is not None:
     for old_value, new_value in new_values.items():
