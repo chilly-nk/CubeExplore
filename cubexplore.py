@@ -271,7 +271,8 @@ class Cubes:
     normalized_blue = (blue_data - np.min(blue_data)) / (np.max(blue_data) - np.min(blue_data))
 
     # Stack the channels to create an RGB image
-    rgb_image = np.stack([normalized_red, normalized_green, normalized_blue], axis=-1)  
+    rgb_image = np.stack([normalized_red, normalized_green, normalized_blue], axis=-1)
+    self.rgb = rgb_image
 
     if pic_only == True:
       rgb_image_norm = (rgb_image * 255).astype(np.uint8)
