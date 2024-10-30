@@ -44,7 +44,7 @@ class Cubes:
     self.normalized = {}
     
     self.combined = {}
-    self.combined_wvls = {}
+    # self.combined_wvls = {} # maybe delete
     self.combined_metadata = {}
     
     self.reshaped = {}
