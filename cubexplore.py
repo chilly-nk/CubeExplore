@@ -14,9 +14,9 @@ from datetime import datetime
 from PIL import Image
 from sklearn.decomposition import PCA
 
-# # Initiate pyimagej (at fiji mode)
-# import imagej
-# ij = imagej.init('sc.fiji:fiji')
+# Initiate pyimagej (at fiji mode)
+import imagej
+ij = imagej.init('sc.fiji:fiji')
 
 class Cubes:
   def __init__(self, data_path, metadata_path = None, cubes_to_load = None, data_source = 'nuance'):
@@ -475,6 +475,24 @@ class Cubes:
     print(f"Assigned Labels: {mask_labels}")
     plt.imshow(img_arr);
 
+  def save_mask(self, filepath, format = None):
+    
+    if format:
+      filepath = os.path.splitext(filepath)[0] + '.' + format.lower()
+
+    # Ensure the mask data is in a format suitable for images
+    if self.mask.dtype != np.uint8:
+      raise ValueError("The mask array must have a dtype of 'uint8'.")
+
+    try:
+      # Convert the mask to a PIL Image and save
+      img = Image.fromarray(self.mask)
+      img.save(filepath, format = format)
+      print(f"Mask saved successfully at {filepath}")
+    except Exception as e:
+        print(f"An error occurred while saving the mask: {e}")
+  
+
 #========== EEM ===============
 
   def get_eem(self, cubes_to_analyse = None, which_data = 'raw', mask_label = None, transform = False, plot = True, vmin = None, vmax = None, axis_ratio = None, title = None, region = None, ax = None, cbar_ax = None, fontsize = 'medium', ticksize = 'medium', xtickstep = 2, also_spectra = True):
@@ -644,7 +662,7 @@ class Cubes:
 
     if mode == 'cubes':
       for cubename in cube_names:
-        cube = data[cubename]
+        cube = data[cubename].astype(np.uint16)
         cube_for_tiff = cube.transpose(2, 0, 1)
         cubename_base = str.split(cubename, '.')[0]
         cube_path = os.path.join(output_path, f'{cubename_base}.tif')
