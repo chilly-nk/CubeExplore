@@ -14,7 +14,7 @@ from datetime import datetime
 from PIL import Image
 from sklearn.decomposition import PCA
 
-# Initiate pyimagej (at fiji mode)
+# # Initiate pyimagej (at fiji mode)
 # import imagej
 # ij = imagej.init('sc.fiji:fiji')
 
@@ -119,7 +119,7 @@ class Cubes:
       # self.metadata_df = metadata
       
       for cubename in self.metadata.keys():
-        ex = self.metadata[cubename]['ex']
+        ex = self.metadata[cubename]['ex'] # Excitation only is used, because in Snapshot data cubenames are too long, so only the first component - before the underscore - is used.
         # self.metadata[cubename]['ex'] = round(float(ex), 1) if ex.isdigit() else ex
         if ex not in self.metadata_df.index:
           print(f"Attention! User has not provided metadata for cube '{ex}'")
@@ -130,15 +130,15 @@ class Cubes:
         self.metadata[cubename]['em_start'] = em_start
         self.metadata[cubename]['em_end'] = em_end
         self.metadata[cubename]['step'] = step
-        exp = self.metadata_df.loc[ex, 'exp']
+        exp = self.metadata_df.loc[ex, 'exposure']
         self.metadata[cubename]['expos_val'] = float(exp) if str(exp).isdigit() else exp
         self.metadata[cubename]['notes'] = self.metadata_df.loc[ex, 'notes']
         self.metadata[cubename]['wavelengths'] = np.array(range(em_start, em_end+1, step))
 
   def get_metadata(self, metadata_path):
     metadata = pd.read_csv(metadata_path)
-    metadata['excitation'] = metadata.excitation.astype(str)
-    metadata.set_index('excitation', inplace = True)
+    metadata['cube_name'] = metadata.cube_name.astype(str)
+    metadata.set_index('cube_name', inplace = True)
     self.metadata_df = metadata
 
   def get_tls_data(self, correction_data_ls):
