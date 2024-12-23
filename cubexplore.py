@@ -13,10 +13,11 @@ import spectral.io.envi as envi
 from datetime import datetime
 from PIL import Image
 from sklearn.decomposition import PCA
+from scipy.ndimage import zoom
 
 # Initiate pyimagej (at fiji mode)
-import imagej
-ij = imagej.init('sc.fiji:fiji')
+# import imagej
+# ij = imagej.init('sc.fiji:fiji')
 
 class Cubes:
   def __init__(self, data_path, metadata_path = None, cubes_to_load = None, data_source = 'nuance'):
@@ -354,6 +355,33 @@ class Cubes:
     if self.mask is not None:
       self.mask = self.mask[rows, cols]
 
+#======== BINNING =====================
+
+  def bin(self, bin_size):
+    for cubename in self.raw.keys():
+      cube = self.raw[cubename]
+      cube_binned = bin_cube(cube, bin_size)
+      self.raw[cubename] = cube_binned
+      self.metadata[cubename]['num_rows'] = cube_binned.shape[0]
+      self.metadata[cubename]['num_cols'] = cube_binned.shape[1]
+
+    if self.processed:
+      for cubename in self.processed.keys():
+        cube = self.processed[cubename]
+        cube_binned = bin_cube(cube, bin_size)
+        self.processed[cubename] = cube_binned
+
+    if self.normalized:
+      for cubename in self.normalized.keys():
+        cube = self.normalized[cubename]
+        cube_binned = bin_cube(cube, bin_size)
+        self.normalized[cubename] = cube_binned
+
+    if self.mask is not None:
+      self.mask = bin_mask(self.mask, bin_size)
+
+#======== RESHAPE ====================
+  
   def reshape(self, which_data = 'raw'):
     data_to_process = getattr(self, which_data)
     self.reshaped_input = which_data
@@ -758,9 +786,33 @@ def ensure_list(input_value):
   #   with open(filepath, 'wb') as file:
   #     pickle.dump(self, file)
 
+def bin_cube(cube, bin_size):
+  rows, cols, bands = cube.shape
+  if rows % bin_size != 0 or cols % bin_size != 0:
+    print("Attention! One of cube dimensions is not divisible by bin_size. It will be cropped to fit the correct dimensions.")
+    rows = rows - rows % bin_size
+    cols = cols - cols % bin_size
+    cube = cube[:rows, :cols, :]
 
+  new_rows = rows // bin_size
+  new_cols = cols // bin_size
 
+  cube_binned = cube.reshape(new_rows, bin_size, new_cols, bin_size, bands).mean(axis = (1, 3))
 
+  return cube_binned
+
+def bin_mask(mask, bin_size):
+  rows, cols = mask.shape
+  if rows % bin_size != 0 or cols % bin_size != 0:
+    rows = rows - rows % bin_size
+    cols = cols - cols % bin_size
+    mask = mask[:rows, :cols]
+
+  new_rows = rows // bin_size
+  new_cols = cols // bin_size
+  
+  zoom_factor = 1 / bin_size
+  return zoom(mask, zoom_factor, order=0)
 
 """
 PREVIOUS VERSION - NOW EVERYTHING ARE MAINLY IN CLASSES
