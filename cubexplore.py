@@ -733,29 +733,75 @@ def read_spectral_library(library_path):
   spectral_library = spectral_library.astype(float)
   return spectral_library
 
-def get_nuance_mask(unmixings_path, components = 3, component_values: dict = {1:200, 2:100, 3:0}, composite = False):
-  num_components = components
-  substrings = [f'C{component}' for component in range(1, num_components+1)]
+class Components:
+  def __init__(self, unmixing_path, n_components = 3, source = 'component_images'):
+    
+    filenames = os.listdir(unmixing_path)
+    if source == 'component_images':
+      substrings = [f'C{component}' for component in range(1, n_components+1)]
+      component_files = [filename for filename in filenames if any((sub in filename) and ('Data' not in filename) for sub in substrings)]
+    elif source == 'component_data':
+      substrings = [f'C{component}_Data' for component in range(1, n_components+1)]
+      component_files = [filename for filename in filenames if any(sub in filename for sub in substrings)]
+    self.files = component_files
+    
+    imar_list = []
+    for component in sorted(component_files):
+      component_path = os.path.join(unmixing_path, component)
+      img = Image.open(component_path)
+      imar = np.atleast_3d(np.array(img))[:, :, 0]
+      imar_list.append(imar)
+    self.stack = np.stack(imar_list, axis = 2)
 
-  filenames = os.listdir(unmixings_path)
-  component_files = [filename for filename in filenames if any(sub in filename for sub in substrings)]
+  def get_mask(self, component_values: dict = {1:200, 2:100, 3:0}, normalize = False):
+    
+    if normalize == True:
+      self.normalize()
+    
+    mask = np.argmax(self.stack, axis = 2)
+    for component, value in component_values.items():
+      mask[mask == component-1] = value
+    self.mask = mask
+    return self
+
+  def normalize(self):
+    max_by_slice = self.stack.max(axis = (0, 1), keepdims = True)
+    self.stack = self.stack / max_by_slice
+    return self
+
+
+def get_nuance_mask(unmixing_path, n_components = 3, source = 'component_data', component_values: dict = {1:200, 2:100, 3:0}, composite = True, normalize = False, threshold_quantiles = None):
+  
+  filenames = os.listdir(unmixing_path)
+  if source == 'component_image':
+    substrings = [f'C{component}' for component in range(1, n_components+1)]
+    component_files = [filename for filename in filenames if any((sub in filename) and ('Data' not in filename) for sub in substrings)]
+  elif source == 'component_data':
+    substrings = [f'C{component}_Data' for component in range(1, n_components+1)]
+    component_files = [filename for filename in filenames if any(sub in filename for sub in substrings)]
 
   imar_list = []
   for component in sorted(component_files):
-    component_path = os.path.join(unmixings_path, component)
+    component_path = os.path.join(unmixing_path, component)
     img = Image.open(component_path)
-    imar = np.array(img)[:, :, 0]
+    imar = np.atleast_3d(np.array(img))[:, :, 0]
     imar_list.append(imar)
   my_composite = np.stack(imar_list, axis = 2)
-  my_mask = np.argmax(my_composite, axis = 2)
+  argmax_mask = np.argmax(my_composite, axis = 2)
+  
+  if normalize == True:
+    slice_max = my_composite.max(axis = (0, 1), keepdims = True)
+    my_composite = my_composite / slice_max
+    argmax_mask = np.argmax(my_composite, axis = 2)
+  
 
   for component, value in component_values.items():
-    my_mask[my_mask == component-1] = value
+    argmax_mask[argmax_mask == component-1] = value
 
   if composite == True:
-    return my_mask, my_composite
+    return argmax_mask, my_composite
   else:
-    return my_mask
+    return argmax_mask
 
 def read_mask(mask_path, new_values: dict = None, silent = True):
   img = Image.open(mask_path)
