@@ -733,6 +733,8 @@ def read_spectral_library(library_path):
   spectral_library = spectral_library.astype(float)
   return spectral_library
 
+#===== NUANCE COMPONENTS ======================
+
 class Components:
   def __init__(self, unmixing_path, n_components = 3, source = 'component_images'):
     
@@ -753,11 +755,30 @@ class Components:
       imar_list.append(imar)
     self.stack = np.stack(imar_list, axis = 2)
 
-  def get_mask(self, component_values: dict = {1:200, 2:100, 3:0}, normalize = False):
+  # def get_mask(self, component_values: dict = {1:200, 2:100, 3:0}):
     
-    if normalize == True:
-      self.normalize()
+  #   mask = np.argmax(self.stack, axis = 2)
+  #   for component, value in component_values.items():
+  #     mask[mask == component-1] = value
+  #   self.mask = mask
+  #   return self
+
+  def get_mask(self, component_values: dict = {1:200, 2:100, 3:0}, threshold_quantiles = None):
     
+    if threshold_quantiles:
+      upper = max(threshold_quantiles)
+      lower = min(threshold_quantiles)
+      quantiles_upper = np.quantile(self.stack, upper, axis = (0, 1), keepdims = True)
+      quantiles_lower = np.quantile(self.stack, lower, axis = (0, 1), keepdims = True)
+      stack_thresholded = (self.stack < quantiles_upper) & (self.stack > quantiles_lower)
+      stack_thresholded = stack_thresholded.astype(int)
+      for component, value in component_values.items():
+        i = component-1
+        stack_thresholded[:, :, i][stack_thresholded[:, :, i] == 1] = value
+        stack_thresholded[:, :, i][stack_thresholded[:, :, i] == 0] = 0
+      self.mask = np.sum(stack_thresholded, axis = -1)
+      return self
+
     mask = np.argmax(self.stack, axis = 2)
     for component, value in component_values.items():
       mask[mask == component-1] = value
