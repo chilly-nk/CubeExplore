@@ -15,7 +15,7 @@ from PIL import Image
 from sklearn.decomposition import PCA
 from scipy.ndimage import zoom
 
-# Initiate pyimagej (at fiji mode)
+"""Initiate pyimagej (at fiji mode)"""
 # import imagej
 # ij = imagej.init('sc.fiji:fiji')
 
@@ -39,7 +39,7 @@ class Cubes:
     
     self.raw = {}
     self.metadata = {}
-    self.correction_data_ls = None
+    self.tls_spectrum = None
     self.spectral_sensitivity = None
     self.processed = {}
     self.normalized = {}
@@ -70,7 +70,7 @@ class Cubes:
     self.spectra_combined_avg = None
 
     if metadata_path:
-      self.get_metadata(metadata_path)
+      self.read_metadata(metadata_path)
     
     if cubes_to_load:
       cube_names = sorted(cubes_to_load)
@@ -100,8 +100,8 @@ class Cubes:
       
       ex = cubename.split("_")[0].split(".")[0]
       md = {'ex': ex,
-            'em_start': None,
-            'em_end': None,
+            'emission_start': None,
+            'emission_end': None,
             'step': None,
             'num_rows': cube.shape[0],
             'num_cols': cube.shape[1],
@@ -125,51 +125,64 @@ class Cubes:
         if ex not in self.metadata_df.index:
           print(f"Attention! User has not provided metadata for cube '{ex}'")
           continue
-        em_start = int(self.metadata_df.loc[ex, 'emission_start'])
-        em_end = int(self.metadata_df.loc[ex, 'emission_end'])
-        step = int(self.metadata_df.loc[ex, 'step'])
-        self.metadata[cubename]['em_start'] = em_start
-        self.metadata[cubename]['em_end'] = em_end
+        emission_start = int(self.metadata_df.loc[ex, 'emission_start_nm'])
+        emission_end = int(self.metadata_df.loc[ex, 'emission_end_nm'])
+        step = int(self.metadata_df.loc[ex, 'step_nm'])
+        self.metadata[cubename]['emission_start'] = emission_start
+        self.metadata[cubename]['emission_end'] = emission_end
         self.metadata[cubename]['step'] = step
-        exp = self.metadata_df.loc[ex, 'exposure']
+        exp = self.metadata_df.loc[ex, 'exposure_time_ms']
         self.metadata[cubename]['expos_val'] = float(exp) if str(exp).isdigit() else exp
         self.metadata[cubename]['notes'] = self.metadata_df.loc[ex, 'notes']
-        self.metadata[cubename]['wavelengths'] = np.array(range(em_start, em_end+1, step))
+        self.metadata[cubename]['wavelengths'] = np.array(range(emission_start, emission_end+1, step))
 
-  def get_metadata(self, metadata_path):
+  def read_metadata(self, metadata_path):
     metadata = pd.read_csv(metadata_path)
     metadata['cube_name'] = metadata.cube_name.astype(str)
     metadata.set_index('cube_name', inplace = True)
     self.metadata_df = metadata
 
-  def get_tls_data(self, correction_data_ls):
+  def read_tls_data(self, tls_spectrum_path):
     # Load Correction Data (TLS Basic Wavelength Scan, several scans repetitions). All scans must have the same start, stop, step
-    self.correction_LS_path = correction_data_ls
-    data_files = os.listdir(correction_data_ls)
+    self.tls_spectrum_path = tls_spectrum_path
+    data_files = os.listdir(tls_spectrum_path)
     for filename in data_files:
       measurement = filename.split('.')[0]
-      data = pd.read_csv(os.path.join(correction_data_ls, filename), sep = '\t', skiprows = 9)
+      data = pd.read_csv(os.path.join(tls_spectrum_path, filename), sep = '\t', skiprows = 9)
       wavelength = round(data.X)
       optical_power = data.Y * 10 ** 6
       data_new = pd.DataFrame({'Wavelength': wavelength, f'OP_uW_m{measurement}': optical_power})
       data_new = data_new.reset_index(drop = True).set_index('Wavelength')
 
-      if self.correction_data_ls is None:
-        self.correction_data_ls = data_new
+      if self.tls_spectrum is None:
+        self.tls_spectrum = data_new
       else:
-        self.correction_data_ls = pd.concat([self.correction_data_ls, data_new], axis = 1)
+        self.tls_spectrum = pd.concat([self.tls_spectrum, data_new], axis = 1)
 
-    self.correction_data_ls['Average'] = self.correction_data_ls.mean(axis = 1)
-    self.correction_data_all = self.correction_data_ls
+    self.tls_spectrum['Average'] = self.tls_spectrum.mean(axis = 1)
+    self.tls_spectrum_all = self.tls_spectrum
 
     wavelengths_digit = [self.metadata[cubename]['ex'] for cubename in self.names if self.metadata[cubename]['ex'].isdigit()]
-    wavelengths_needed = [float(wvl) for wvl in wavelengths_digit if float(wvl) in self.correction_data_ls.index]
-    self.correction_data_ls = self.correction_data_ls.loc[wavelengths_needed]
+    wavelengths_needed = [float(wvl) for wvl in wavelengths_digit if float(wvl) in self.tls_spectrum.index]
+    self.tls_spectrum = self.tls_spectrum.loc[wavelengths_needed]
+    return self
 
   def get_spectral_sensitivity(self, spectral_sensitivity_data):
     self.spectral_sensitivity = pd.read_csv(spectral_sensitivity_data, index_col = 0)
   
-  def process(self, cubes_to_analyse, background_cube = None, correction_data_ls = None, spectral_sensitivity_data = None):
+  def join_tls_data(self, id_col='light_power_uW'):
+    tls_data= self.tls_spectrum_all.copy()['Average']
+    tls_data.index = tls_data.index.astype(int).astype(str)
+    tls_data.name = id_col
+    self.metadata_df.update(tls_data, join='left')
+    return self
+
+  def save_metadata(self, metadata_path=None):
+    if metadata_path==None:
+      metadata_path = self.metadata_path
+    self.metadata_df.to_csv(metadata_path)
+
+  def process(self, cubes_to_analyse, background_cube = None, tls_spectrum_path = None, spectral_sensitivity_data = None):
     
     if background_cube:
       for cube in cubes_to_analyse:
@@ -181,8 +194,8 @@ class Cubes:
       print('Background subtraction done. See subtracted cubes in cubes.processed attribute.\n--------------------------------')
     else: print('Attention! No background subtraction took place.\n--------------------------------')
 
-    if correction_data_ls:
-      self.get_tls_data(correction_data_ls)
+    if tls_spectrum_path:
+      self.read_tls_data(tls_spectrum_path)
 
       if not self.processed:
         cubes_to_correct = self.raw.keys()
@@ -194,9 +207,9 @@ class Cubes:
         print(f"Correcting by light source cube '{cubename}'...")
         ex = self.metadata[cubename]['ex']
         ex = float(ex) if ex.isdigit() else ex
-        if ex in self.correction_data_ls.index:
+        if ex in self.tls_spectrum.index:
 
-          correction_factor = self.correction_data_ls['Average'][ex]/self.correction_data_ls['Average'].mean()
+          correction_factor = self.tls_spectrum['Average'][ex]/self.tls_spectrum['Average'].mean()
           self.metadata[cubename]['correction_factor'] = round(correction_factor, 2)
 
           if background_cube:
