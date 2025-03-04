@@ -532,7 +532,24 @@ class Cubes:
       print(f"Mask saved successfully at {filepath}")
     except Exception as e:
         print(f"An error occurred while saving the mask: {e}")
-  
+
+#========== Get WAVELENGTHS ===============
+  def get_wvls(self, cubename):
+
+    self.wvls = None
+    self.wavelengths = None #synonimous attribute
+    
+    cubename = cubename.split('.')[0]
+    emission_start = int(self.metadata_df.loc[cubename, 'emission_start_nm'])
+    emission_end = int(self.metadata_df.loc[cubename, 'emission_end_nm'])
+    step = int(self.metadata_df.loc[cubename, 'step_nm'])
+    self.wvls = np.arange(emission_start, emission_end+1, step)
+    self.wavelengths = np.arange(emission_start, emission_end+1, step)
+    return self
+
+  def get_wavelengths(self, cubename): # synonimous function to the above
+    self.get_wvls(cubename)
+
 
 #========== EEM ===============
 
