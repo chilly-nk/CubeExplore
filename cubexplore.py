@@ -479,6 +479,14 @@ class Cubes:
         self.normalized[cubename] = cube_zscaled
       self.log[self.time()] = {'ZScale': {'which_data': which_data, 'cubes_to_analyse': cube_names}}
 
+    elif how == 'by_band':
+      for cubename in cube_names:
+        cube = data[cubename]
+        cube_max = np.max(cube, axis = (0, 1), keepdims=True) + np.finfo(float).eps
+        cube_normalized = cube / cube_max
+        self.normalized[cubename] = cube_normalized
+      self.log[self.time()] = {'normalize_by_band': {'which_data': which_data, 'cubes_to_analyse': cube_names}}
+
 #========== Z-SCALE 2D DATA ============================
 
   def scale(self, labels: list = None, which_data = 'pcs', how = 'mean'):
