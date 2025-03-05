@@ -533,7 +533,7 @@ class Cubes:
     except Exception as e:
         print(f"An error occurred while saving the mask: {e}")
 
-#========== Get WAVELENGTHS ===============
+#======= GET WVLS ===============
   def get_wvls(self, cubename):
 
     self.wvls = None
@@ -550,6 +550,82 @@ class Cubes:
   def get_wavelengths(self, cubename): # synonimous function to the above
     self.get_wvls(cubename)
 
+#=======GET SPECTRA============
+
+  def get_spectra(self, cubes_to_analyse, which_data='raw', mask_label=None, df=False, wvls=False, long=False, label=None, sample_size=None):
+
+    self.spectra = {}
+    self.spectra_info = {}
+    
+    # Maybe no need for estimators, quite easy to do outside
+    # estimators = {
+    #     'mean': np.mean,
+    #     'median': np.median
+    # }  
+    
+    data_to_process = getattr(self, which_data)
+
+    if cubes_to_analyse:
+      cube_names = ensure_list(cubes_to_analyse)
+    else:
+      cube_names = self.names
+
+    if mask_label is not None:
+      self.where = np.where(self.mask == mask_label)
+      for cubename in cube_names:
+        cube = data_to_process[cubename]
+        segment = cube[self.where]
+        self.spectra[cubename] = segment
+
+        self.spectra_info[cubename] = {}
+        self.spectra_info[cubename]['label'] = label
+        self.spectra_info[cubename]['mask_label'] = mask_label
+        if which_data == 'combined':
+          self.spectra_info[cubename]['wvls'] = self.combined_metadata[cubename]['wavelengths']
+        else:
+          self.spectra_info[cubename]['wvls'] = self.get_wvls(cubename).wvls
+    else:
+      rows = self.selected_rows
+      cols = self.selected_cols
+      for cubename in cube_names:
+        cube = data_to_process[cubename]
+        segment = cube[rows, cols]
+        segment = segment.reshape(segment.shape[0]*segment.shape[1], segment.shape[-1])
+        self.spectra[cubename] = segment
+
+        self.spectra_info[cubename] = {}
+        self.spectra_info[cubename]['label'] = label
+        self.spectra_info[cubename]['rows'] = (rows.start, rows.stop)
+        self.spectra_info[cubename]['cols'] = (cols.start, cols.stop)
+        if which_data == 'combined':
+          self.spectra_info[cubename]['wvls'] = self.combined_metadata[cubename]['wavelengths']
+        else:
+          self.spectra_info[cubename]['wvls'] = self.get_wvls(cubename).wvls
+
+    if sample_size is not None:
+      np.random.seed(42)
+      for cubename in cube_names:
+        random_index = np.random.choice(self.spectra[cubename].shape[0], sample_size, replace=False)
+        self.spectra[cubename] = self.spectra[cubename][random_index]
+
+    # if estimator in estimators:
+    #   for cubename in cube_names:
+    #     self.spectra[cubename] = estimators[estimator](self.spectra[cubename], axis=0)
+    # else:
+    #   raise ValueError(f"Unknown estimator: {estimator}")
+
+    if df == True:
+      for cubename in cube_names:
+        if wvls == True:
+          df = pd.DataFrame(self.spectra[cubename], columns = self.spectra_info[cubename]['wvls'])
+        else:
+          df = pd.DataFrame(self.spectra[cubename])
+        if long == True:
+          df.insert(0, 'Label', label)
+          df = df.melt(id_vars='Label', var_name='Wavelength', value_name='Intensity')
+        self.spectra[cubename] = df
+
+    return self
 
 #========== EEM ===============
 
