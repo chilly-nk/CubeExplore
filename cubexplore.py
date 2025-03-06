@@ -133,7 +133,7 @@ class Cubes:
         self.metadata[cubename]['step'] = step
         exp = self.metadata_df.loc[ex, 'exposure_time_ms']
         self.metadata[cubename]['expos_val'] = float(exp) if str(exp).isdigit() else exp
-        self.metadata[cubename]['notes'] = self.metadata_df.loc[ex, 'notes']
+        # self.metadata[cubename]['notes'] = self.metadata_df.loc[ex, 'notes'] # Causes a bug when there is no 'notes' field in the metadata
         self.metadata[cubename]['wavelengths'] = np.array(range(emission_start, emission_end+1, step))
 
   def read_metadata(self, metadata_path):
@@ -486,6 +486,25 @@ class Cubes:
         cube_normalized = cube / cube_max
         self.normalized[cubename] = cube_normalized
       self.log[self.time()] = {'normalize_by_band': {'which_data': which_data, 'cubes_to_analyse': cube_names}}
+
+#==== THRESHOLD BANDS ===========
+
+  def threshold_bands(self, cubes_to_analyse, which_data='raw', quantile=0.995):
+    
+    self.thresholded = {}
+    data = getattr(self, which_data)
+
+    if cubes_to_analyse:
+      cube_names = ensure_list(cubes_to_analyse)
+    else:
+      cube_names = list(data.keys())
+    
+    for cubename in cube_names:
+      print(f'Doing cube {cubename}')
+      cube = data[cubename]
+      band_quantiles = np.quantile(cube, quantile, axis=(0, 1), keepdims=True)
+      cube_clipped = np.minimum(cube, band_quantiles)
+      self.thresholded[cubename] = cube_clipped
 
 #========== Z-SCALE 2D DATA ============================
 
