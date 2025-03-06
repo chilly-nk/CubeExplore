@@ -595,7 +595,7 @@ class Cubes:
     if cubes_to_analyse:
       cube_names = ensure_list(cubes_to_analyse)
     else:
-      cube_names = self.names
+      cube_names = list(data_to_process.keys())
 
     if mask_label is not None:
       self.where = np.where(self.mask == mask_label)
