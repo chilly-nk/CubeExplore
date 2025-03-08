@@ -1047,3 +1047,13 @@ def bin_mask(mask, bin_size):
   zoom_factor = 1 / bin_size
   return zoom(mask, zoom_factor, order=0)
 
+# Read a Google Sheet
+def read_sheet(url, sheet, skipr=0, dropna=False, dropna_axis='rows'):
+  doc_id = url.split('/d/')[-1].split('/')[0]
+  url = f'https://docs.google.com/spreadsheets/d/{doc_id}/gviz/tq?tqx=out:csv&sheet={sheet}'
+  if dropna==True:
+    df = pd.read_csv(url, skiprows = skipr).dropna(axis = dropna_axis, how = 'all')
+  else:
+    df = pd.read_csv(url, skiprows = skipr)
+  return df
+
