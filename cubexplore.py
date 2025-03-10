@@ -500,7 +500,7 @@ class Cubes:
       cube_names = list(data.keys())
     
     for cubename in cube_names:
-      print(f'Doing cube {cubename}')
+      print(f"Thresholding cube '{cubename}' by band at q={quantile}")
       cube = data[cubename]
       band_quantiles = np.quantile(cube, quantile, axis=(0, 1), keepdims=True)
       cube_clipped = np.minimum(cube, band_quantiles)
