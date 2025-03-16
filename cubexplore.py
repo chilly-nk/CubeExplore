@@ -325,7 +325,7 @@ class Cubes:
 
 #========= ROI ========================
 
-  def roi(self, x1, y1, width, height, facecolor='none', linewidth = 0.7, edgecolor='red', linestyle='--', **kwargs):
+  def roi(self, x1, y1, width, height, facecolor='none', linewidth = 0.7, edgecolor='red', linestyle='-', **kwargs):
     
     params = {
       'facecolor': facecolor,
