@@ -14,6 +14,7 @@ from datetime import datetime
 from PIL import Image
 from sklearn.decomposition import PCA
 from scipy.ndimage import zoom
+from scipy.ndimage import gaussian_filter as gf
 
 """Initiate pyimagej (at fiji mode)"""
 # import imagej
@@ -258,9 +259,10 @@ class Cubes:
 
 #=========== VIEW ======================
 
-  def view(self, cube_to_view: str, y1 = None, y2 = None, x1 = None, x2 = None, blue_bands = range(3, 9), green_bands = range(13, 19), red_bands = range(23, 29), ax = None, color = 'red', pic_only = False, title = None, fontsize = 12, filename = None, savefig = False):
+  def view(self, cube_to_view: str, which_data='raw', y1 = None, y2 = None, x1 = None, x2 = None, blue_bands = range(3, 9), green_bands = range(13, 19), red_bands = range(23, 29), ax = None, color = 'red', pic_only = False, title = None, fontsize = 12, filename = None, savefig = False):
     
-    cube = self.raw[cube_to_view]
+    data = getattr(self, which_data)
+    cube = data[cube_to_view]
     if filename:
       filename = filename+'.png'
     elif title:
@@ -486,6 +488,23 @@ class Cubes:
         cube_normalized = cube / cube_max
         self.normalized[cubename] = cube_normalized
       self.log[self.time()] = {'normalize_by_band': {'which_data': which_data, 'cubes_to_analyse': cube_names}}
+
+#=== GAUSSIAN FILTER ===============
+
+  def gaussian_filter(self, cubes_to_analyse=None, which_data='raw', sigma=(0, 0, 0)):
+    
+    self.processed_info = {}
+    data = getattr(self, which_data)
+    if cubes_to_analyse:
+      cube_names = sorted(ensure_list(cubes_to_analyse))
+    else:
+      cube_names = sorted(ensure_list(data.keys()))
+
+    for cubename in cube_names:
+      self.processed[cubename] = gf(data[cubename], sigma=sigma)
+      self.processed_info[cubename] = {'time': self.time(), 'source_data': which_data, 'processing': 'gaussian_filter', 'sigma': sigma}
+    
+    return self
 
 #==== THRESHOLD BANDS ===========
 
