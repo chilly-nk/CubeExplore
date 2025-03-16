@@ -4,12 +4,13 @@ import pandas as pd
 import datetime
 import seaborn as sns
 import matplotlib.pyplot as plt
+from matplotlib import patches
 import pickle
-import pytz
 import json
 import tifffile as tiff
 import spectral as spy
 import spectral.io.envi as envi
+import pytz
 from datetime import datetime
 from PIL import Image
 from sklearn.decomposition import PCA
@@ -35,6 +36,10 @@ class Cubes:
     self.metadata_path = metadata_path
     self.log[time]['metadata_path'] = metadata_path
     self.log[time]['cubes_loaded'] = cubes_to_load if cubes_to_load is not None else 'All'
+
+    self.folder = os.path.basename(self.data_path)
+    sample_names = SampleNames(os.path.dirname(self.data_path)).ref_samples
+    self.sample = [samplename if samplename in self.folder else None for samplename in sample_names][0]
     
     self.cubes_to_analyse = None
     
@@ -54,6 +59,9 @@ class Cubes:
     self.averaged = {}
     self.summed = {}
 
+    self.color_bands = {}
+    self.color_bands['nuance'] = {'red': range(23, 29), 'green': range(13, 19), 'blue': range(3, 9)}
+    self.color_bands['goldeneye'] = {'red': range(52, 62), 'green': range(32, 42), 'blue': (11, 21)}
     self.selected_rows = None
     self.selected_cols = None
     
@@ -257,24 +265,22 @@ class Cubes:
       print('Correction of cubes by spectral sensitivity done. See corrected cubes in attribute self.processed .\n--------------------------------')
     else: print('Attention! No data correction by spectral sensitivity took place.\n--------------------------------') 
 
-#=========== VIEW ======================
+#========== GET RGB ===============
 
-  def view(self, cube_to_view: str, which_data='raw', y1 = None, y2 = None, x1 = None, x2 = None, blue_bands = range(3, 9), green_bands = range(13, 19), red_bands = range(23, 29), ax = None, color = 'red', pic_only = False, title = None, fontsize = 12, filename = None, savefig = False):
+  def get_rgb(self, cube_to_view, which_data='raw', color_bands=None):
+  
+    self.rgb_info = {}
+    if color_bands is None:
+      color_bands = self.color_bands['nuance']
+    if self.data_source == 'goldeneye' or self.data_source == 'snapshot':
+      color_bands = self.color_bands['goldeneye']
     
     data = getattr(self, which_data)
     cube = data[cube_to_view]
-    if filename:
-      filename = filename+'.png'
-    elif title:
-      filename = title+'.png'
-    else:
-      filename = f"view_{self.metadata[cube_to_view]['ex']}.png"
-    
-    if self.data_source == 'goldeneye' or self.data_source == 'snapshot':
-      blue_bands = range(11, 21)
-      green_bands = range(32, 42)
-      red_bands = range(52, 62)
-    # But what if you want to provide bands even when its 'snapshot'. They will be overwritten here. Need to fix this.
+
+    red_bands = color_bands['red']
+    green_bands = color_bands['green']
+    blue_bands = color_bands['blue']
 
     # Extract data for each channel
     red_data = np.mean(cube[:, :, red_bands], axis=-1)
@@ -287,50 +293,58 @@ class Cubes:
     normalized_blue = (blue_data - np.min(blue_data)) / (np.max(blue_data) - np.min(blue_data))
 
     # Stack the channels to create an RGB image
-    rgb_image = np.stack([normalized_red, normalized_green, normalized_blue], axis=-1)
-    self.rgb = rgb_image
+    self.rgb_array = np.stack([normalized_red, normalized_green, normalized_blue], axis=-1)
+    self.rgb_image = Image.fromarray((self.rgb_array * 255).astype(np.uint8))
+    self.rgb_info = {'time': self.time(), 'cubename': cube_to_view, 'which_data': which_data, 'color_bands': color_bands}
+    return self
 
-    if pic_only == True:
-      rgb_image_norm = (rgb_image * 255).astype(np.uint8)
-      image = Image.fromarray(rgb_image_norm)
-      image.save(f"Pic_Only_{filename}")
+  #========= SAVE RGB ======================
+
+  def save_rgb(self, filepath=None):
+    if filepath is None:
+      cubename = os.path.splitext(self.rgb_info['cubename'])[0]
+      filename = f"RGB_Python_{self.sample}_{cubename}.png"
+      filepath = os.path.join(os.path.dirname(self.data_path), filename)
+    self.rgb_image.save(filepath)
+    print(f"RGB saved at: {filepath}")
+
+#=========== VIEW ======================
+# x1=None, y1=None, width=None, height=None, color = 'red', title = None, fontsize = 12, filename = None, savefig = False, 
+  
+  def view(self, cube_to_view, which_data='raw', ax=None, **kwargs):
+    
+    self.get_rgb(cube_to_view, which_data, **kwargs)
+    if ax is None:
+      fig, ax = plt.subplots()
     else:
-      # Display the RGB image
-      if ax is None:
-        fig, ax = plt.subplots()
-      else:
-        ax = ax
-      ax.imshow(rgb_image);
+      ax = ax
+    ax.imshow(self.rgb_array)
+    self.ax = ax
+    
+    return self
 
-      if title:
-        ax.set_title(title, size = fontsize)
+#========= ROI ========================
+
+  def roi(self, x1, y1, width, height, facecolor='none', linewidth = 0.7, edgecolor='red', linestyle='--', **kwargs):
     
-      # Set the boundaries
-      coords = pd.Series([y1, y2, x1, x2])
-      if coords.notna().all():
-        color = color
-        ax.axvline(x = x1, color = color, linewidth = 0.7, linestyle = '--');
-        ax.axvline(x = x2, color = color, linewidth = 0.7, linestyle = '--');
-        ax.axhline(y = y1, color = color, linewidth = 0.7, linestyle = '--');
-        ax.axhline(y = y2, color = color, linewidth = 0.7, linestyle = '--');
+    params = {
+      'facecolor': facecolor,
+      'linewidth': linewidth,
+      'edgecolor': edgecolor,
+      'linestyle': linestyle,
+      **kwargs
+    }
     
-        self.selected_rows = slice(min(y1, y2), max(y1, y2))
-        self.selected_cols = slice(min(x1, x2), max(x1, x2))
-    
-      if savefig == True:
-        plt.savefig(filename, bbox_inches = 'tight', dpi = 200)
-    # elif any(coords):
-    #   coords_dict = {
-    #     'y1': y1,
-    #     'y2': y2,
-    #     'x1': x1,
-    #     'x2': x2,
-    #   }
-    #   not_provided = [key for key, value in coords_dict.items() if value is None]
-    #   print(f"{not_provided} not provided")
-    # else: print('No coordinates provided for defining a region.\nIf you want you can provide y1, y2, x1, x2.')
-    
-    # plt.show()
+    rect = patches.Rectangle((x1, y1), width, height, **params)
+    self.ax.add_patch(rect)
+
+    x2 = x1+width
+    y2 = y1+height
+
+    self.selected_rows = slice(min(y1, y2), max(y1, y2))
+    self.selected_cols = slice(min(x1, x2), max(x1, x2))
+
+    return self
 
 #========= CROP ==================
 
@@ -489,7 +503,7 @@ class Cubes:
         self.normalized[cubename] = cube_normalized
       self.log[self.time()] = {'normalize_by_band': {'which_data': which_data, 'cubes_to_analyse': cube_names}}
 
-#=== GAUSSIAN FILTER ===============
+#======= GAUSSIAN FILTER ===============
 
   def gaussian_filter(self, cubes_to_analyse=None, which_data='raw', sigma=(0, 0, 0)):
     
