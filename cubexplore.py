@@ -39,7 +39,8 @@ class Cubes:
 
     self.folder = os.path.basename(self.data_path)
     sample_names = SampleNames(os.path.dirname(self.data_path)).ref_samples
-    self.sample = [samplename if samplename in self.folder else None for samplename in sample_names][0]
+    samples = [samplename if samplename in self.folder else None for samplename in sample_names]
+    self.sample = samples[0] if len(samples) > 0 else None
     
     self.cubes_to_analyse = None
     
@@ -421,7 +422,7 @@ class Cubes:
 
 #========== PCA ======================
 
-  def get_pcs(self, cubes_to_analyse = None, components = 3, which_data = 'raw', df = False, mask_array = None, extra_transform = False, trans_factor = 0.5, trans_inplace = False):
+  def get_pcs(self, cubes_to_analyse = None, components = 3, which_data = 'raw', df = False, subset_indices = None, extra_transform = False, trans_factor = 0.5, trans_inplace = False):
     
     data_to_process = getattr(self, which_data)
     if cubes_to_analyse:
@@ -432,8 +433,8 @@ class Cubes:
     for cubename in cube_names:
       cube = data_to_process[cubename]
       cube_reshaped = cube.reshape(cube.shape[0]*cube.shape[1], cube.shape[2]).astype(np.float64)
-      if mask_array is not None:
-        cube_reshaped = cube_reshaped[mask_array]
+      if subset_indices is not None:
+        cube_reshaped = cube_reshaped[subset_indices]
       pca = PCA(n_components = components)
       PCs = pca.fit_transform(cube_reshaped)
       
@@ -451,6 +452,8 @@ class Cubes:
           columns = [f'PC{comp}' for comp in range(1, components+1)]
           PCs = pd.DataFrame(PCs, columns = columns)
         self.pcs[cubename] = PCs
+
+    return self
 
   # def get_pcs_subset(self, ):
   #   data_to_process = getattr(self, which_data)
@@ -565,16 +568,19 @@ class Cubes:
   def read_mask(self, filepath, mask_labels = None):
     img = Image.open(filepath)
     img_arr = np.array(img)
-    # This part must be eliminated after our masks are exact-value ones
-    # img_arr[(img_arr < 50)] = 0
-    # img_arr[(img_arr >= 50) & (img_arr < 125)] = 1
-    # img_arr[(img_arr >= 125)] = 2
     
     self.mask = img_arr
     self.mask_labels = mask_labels
+    self.pixel_labels = img_arr.reshape(img_arr.shape[0]*img_arr.shape[1])
     print(f"Values in Mask: {np.unique(img_arr)}")
-    print(f"Assigned Labels: {mask_labels}")
-    plt.imshow(img_arr);
+    
+    if mask_labels is not None:
+      self.pixel_labels_str = [mask_labels[num_lab] for num_lab in self.pixel_labels]
+
+    print(f"Assigned Labels (string labels to mask numeric values - not sure, need to check): {mask_labels}")
+    # if show=True:
+    #   plt.imshow(img_arr);
+    return self
 
   def save_mask(self, filepath, format = None):
     
