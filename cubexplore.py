@@ -151,9 +151,11 @@ class Cubes:
     metadata['cube_name'] = metadata.cube_name.astype(str)
     metadata.set_index('cube_name', inplace = True)
     self.metadata_df = metadata
+    return self
 
   def read_tls_data(self, tls_spectrum_path):
     # Load Correction Data (TLS Basic Wavelength Scan, several scans repetitions). All scans must have the same start, stop, step
+    self.tls_spectrum = None
     self.tls_spectrum_path = tls_spectrum_path
     data_files = os.listdir(tls_spectrum_path)
     for filename in data_files:
@@ -924,7 +926,8 @@ class Components:
     imar_list = []
     for component in sorted(component_files):
       component_path = os.path.join(unmixing_path, component)
-      img = Image.open(component_path)
+      # img = Image.open(component_path)
+      img = tiff.imread(component_path)
       imar = np.atleast_3d(np.array(img))[:, :, 0]
       imar_list.append(imar)
     self.stack = np.stack(imar_list, axis = 2)
