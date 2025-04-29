@@ -1,0 +1,8 @@
+README.md
+setup.py
+cubexplore/__init__.py
+cubexplore/core.py
+cubexplore.egg-info/PKG-INFO
+cubexplore.egg-info/SOURCES.txt
+cubexplore.egg-info/dependency_links.txt
+cubexplore.egg-info/top_level.txt
