@@ -2,6 +2,8 @@
 __pycache__/
 *.py[cod]
 
+cubexplore/__pycache__/
+
 # Build system artifacts
 *.egg-info/
 build/
