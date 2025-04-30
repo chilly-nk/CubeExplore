@@ -10,13 +10,15 @@ def read_version():
                 delim = '"' if '"' in line else "'"
                 return line.split(delim)[1]
 
+def read_requirements():
+    with open("requirements.txt") as f:
+        return f.read().splitlines()
+
 setup(
     name='cubexplore',
     version=read_version(),
     packages=find_packages(),
-    install_requires=[
-      
-    ],  # or parse from requirements.txt
+    install_requires=read_requirements(),
     description='Exploration tools for hyperspectral cubes',
     author='chilly-nk',
 )
