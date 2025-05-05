@@ -14,45 +14,35 @@ It provides utilities for loading, processing, visualizing, and interacting with
 
 ## Installation
 
-### Clone the repository
+### 1. Clone the repository
 
+```bash
+git clone --branch v1.0 https://github.com/chilly-nk/CubeExplore.git
+```
 
-### System requirements
-
-If you're using this in a **local environment**:
+### 2. System requirements
 
 ```bash
 apt update
 apt install -y maven
 ```
-
-If you're using **Google Colab**, prefix the commands with `!` to run them as shell commands:
-```python
-!apt update
-!apt install -y maven
-```
-
-Or use a shell cell to run all commands at once as shell commands:
+If you're using **Google Colab**:
+- prefix the commands with an explanation mark: `!apt install -y maven`
+- or use a shell cell to run all commands at once as shell commands:
 ```python
 %%shell
 apt update
 apt install -y maven
 ```
 
-### Python dependencies
+### 3. Install the module
 
-If you're working in a **local environment**:
+To install the module **along with its Python dependencies**, navigate to the project folder and run:
+
 ```bash
-pip install -r requirements.txt
+pip install .
 ```
-
-If you're using **Google Colab**, prefix the command with `!`:
-```python
-!pip install -r requirements.txt
-```
-
-### Installing the module
-
+If you're using **Google Colab**, prefix the command with an exclamation mark: `!pip install .`
 
 ## Usage
 
