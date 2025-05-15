@@ -5,7 +5,6 @@ import datetime
 import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib import patches
-import pickle
 import json
 import tifffile as tiff
 import spectral as spy
@@ -17,9 +16,6 @@ from sklearn.decomposition import PCA
 from scipy.ndimage import zoom
 from scipy.ndimage import gaussian_filter as gf
 
-"""Initiate pyimagej (at fiji mode)"""
-# import imagej
-# ij = imagej.init('sc.fiji:fiji')
 
 class Cubes:
   def __init__(self, data_path, metadata_path = None, cubes_to_load = None, data_source = 'nuance'):
@@ -87,6 +83,10 @@ class Cubes:
     else:
       cube_names = sorted(os.listdir(data_path))
     self.names = cube_names
+
+    if data_source == 'nuance':
+      from ..cubexplore.imagej_init import load_imagej
+      ij = load_imagej()
     
     for cubename in cube_names:
       print(f"Loading '{cubename}'...")
@@ -648,10 +648,11 @@ class Cubes:
         self.spectra_info[cubename] = {}
         self.spectra_info[cubename]['label'] = label
         self.spectra_info[cubename]['mask_label'] = mask_label
-        if which_data == 'combined':
-          self.spectra_info[cubename]['wvls'] = self.combined_metadata[cubename]['wavelengths']
-        else:
-          self.spectra_info[cubename]['wvls'] = self.get_wvls(cubename).wvls
+        if wvls == True:
+          if which_data == 'combined':
+            self.spectra_info[cubename]['wvls'] = self.combined_metadata[cubename]['wavelengths']
+          else:
+            self.spectra_info[cubename]['wvls'] = self.get_wvls(cubename).wvls
     else:
       rows = self.selected_rows
       cols = self.selected_cols
@@ -665,10 +666,11 @@ class Cubes:
         self.spectra_info[cubename]['label'] = label
         self.spectra_info[cubename]['rows'] = (rows.start, rows.stop)
         self.spectra_info[cubename]['cols'] = (cols.start, cols.stop)
-        if which_data == 'combined':
-          self.spectra_info[cubename]['wvls'] = self.combined_metadata[cubename]['wavelengths']
-        else:
-          self.spectra_info[cubename]['wvls'] = self.get_wvls(cubename).wvls
+        if wvls == True:
+          if which_data == 'combined':
+            self.spectra_info[cubename]['wvls'] = self.combined_metadata[cubename]['wavelengths']
+          else:
+            self.spectra_info[cubename]['wvls'] = self.get_wvls(cubename).wvls
 
     if sample_size is not None:
       np.random.seed(42)
@@ -1108,14 +1110,6 @@ def ensure_list(input_value):
     return input_value
   else:
     raise TypeError("Input must be either a string or a list")
-
-  # def read_mask(self, filepath, mask_labels = None):  
-
-  # This doesn't work yet
-  # def savefile(self, name = 'cubes', path = str):
-  #   filepath = os.path.join(path, name + '.pkl')
-  #   with open(filepath, 'wb') as file:
-  #     pickle.dump(self, file)
 
 def bin_cube(cube, bin_size):
   rows, cols, bands = cube.shape
