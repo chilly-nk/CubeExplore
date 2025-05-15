@@ -19,7 +19,7 @@ from .utils import ensure_list
 from .utils import bin_mask
 
 class Cubes:
-  def __init__(self, data_path, metadata_path = None, cubes_to_load = None, data_source = 'nuance'):
+  def __init__(self, data_path, metadata_path=None, sample_id=None, cubes_to_load=None, data_source='tiff_cubes'):
     
     time = self.time()
     self.log = {}
@@ -77,7 +77,7 @@ class Cubes:
     self.spectra_combined_avg = None
 
     if metadata_path:
-      self.metadata_df = read_metadata(metadata_path)
+      self.metadata_df = read_metadata(metadata_path, sample_id)
     
     if cubes_to_load:
       cube_names = sorted(cubes_to_load)
@@ -895,9 +895,11 @@ class Cubes:
 
 ######################################
 
-def read_metadata(metadata_path):
+def read_metadata(metadata_path, sample_id=None):
   metadata = pd.read_csv(metadata_path)
   metadata.columns = [col.lower() for col in metadata.columns]
+  if sample_id:
+    metadata = metadata[metadata['sample_id'] == sample_id]
   metadata['cube_name'] = metadata.cube_name.astype(str)
   metadata.set_index('cube_name', inplace = True)
   return metadata
