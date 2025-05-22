@@ -693,6 +693,33 @@ class Cubes:
 
 #========== EEM ===============
 
+  def get_eem_from_mask(self, cubes_to_analyse=None, which_data='raw', mask_label=None):
+    data_to_process = getattr(self, which_data)
+    if cubes_to_analyse:
+      cube_names = ensure_list(cubes_to_analyse)
+    else:
+      cube_names = self.names
+    cube_names = sorted(cube_names)
+    if self.mask_labels:
+      mask_label = self.mask_labels[mask_label]
+    else:
+      mask_label = mask_label
+    where = np.where(self.mask == mask_label)
+    spectra = []
+    for cubename in cube_names:
+      wvls = self.get_wvls(cubename).wvls
+      cube_segment = data_to_process[cubename][where]
+      spectrum = np.mean(cube_segment, axis = 0)
+      spectrum_df = pd.DataFrame([spectrum], index=[cubename], columns=wvls)
+      spectra.append(spectrum_df)
+    self.eem = pd.concat(spectra).sort_index(axis=1).sort_index(axis=0, ascending=False)
+    self.eem_info = {
+      'mask_label': mask_label,
+      'which_data': which_data,
+      'cubenames': cube_names,
+      }
+    return self
+
   def get_eem(self, cubes_to_analyse = None, which_data = 'raw', mask_label = None, transform = False, plot = True, vmin = None, vmax = None, axis_ratio = None, title = None, region = None, ax = None, cbar_ax = None, fontsize = 'medium', ticksize = 'medium', xtickstep = 2, also_spectra = True):
       
     data_to_process = getattr(self, which_data)
