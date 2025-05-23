@@ -1,22 +1,34 @@
+# Basic modules
 import os
 import numpy as np
 import pandas as pd
-import datetime
 import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib import patches
+
+# General modules
 import json
+import pytz
+import datetime
+from datetime import datetime
+from typing import Optional
+
+# Image analysis modules
 import tifffile as tiff
 import spectral.io.envi as envi
-import pytz
-from datetime import datetime
 from PIL import Image
-from sklearn.decomposition import PCA
+
+# Data processing modules
 from scipy.ndimage import gaussian_filter as gf
 
+# ML modules
+from sklearn.decomposition import PCA
+
+# CubeExplore functions
 from .qc import SampleNames
 from .utils import ensure_list
 from .utils import bin_mask
+
 
 class Cubes:
   def __init__(self, data_path, metadata_path=None, sample_id=None, cubes_to_load=None, data_source='tiff_cubes'):
@@ -502,6 +514,20 @@ class Cubes:
         self.normalized[cubename] = cube_normalized
       self.log[self.time()] = {'normalize_by_band': {'which_data': which_data, 'cubes_to_analyse': cube_names}}
 
+#======CORRECTION BY EXPOSURE TIME========
+  
+  def correct_by_exposure(self, cubes_to_analyse=None, which_data='raw', per_wavelength=False, exposure_data: Optional[pd.Series] = None):
+    # Date created: 2025-05-23
+    data, cube_names = self.get_data(which_data, cubes_to_analyse)
+      
+    if exposure_data is None:
+      exposure_col = [col for col in self.metadata_df.columns if 'exposure_time' in col][0]
+      exposure_data = self.metadata_df[exposure_col]
+
+    for cubename in cube_names:
+      exposure_val = exposure_data[cubename.split('.')[0]]
+      self.processed[cubename] = data[cubename] / exposure_val 
+
 #======= GAUSSIAN FILTER ===============
 
   def gaussian_filter(self, cubes_to_analyse=None, which_data='raw', sigma=(0, 0, 0)):
@@ -920,6 +946,13 @@ class Cubes:
     yerevantime = pytz.timezone('Asia/Yerevan')
     return datetime.now().astimezone(yerevantime).strftime('%y%m%d_%H%M%S')
 
+  def get_data(self, which_data, cubes_to_analyse=None):
+    data = getattr(self, which_data)
+    if cubes_to_analyse:
+      cube_names = sorted(ensure_list(cubes_to_analyse))
+    else:
+      cube_names = sorted(ensure_list(data.keys()))
+    return data, cube_names
 ######################################
 
 def read_metadata(metadata_path, sample_id=None):

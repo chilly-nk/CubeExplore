@@ -19,10 +19,12 @@ def read_mask(mask_path, new_values: dict = None, silent = True):
 
 # deleted from cubes.py | imported
 def ensure_list(input_value):
-  if isinstance(input_value, str):
-    return [input_value]
-  elif isinstance(input_value, list):
+  if isinstance(input_value, list): # check if list
     return input_value
+  elif isinstance(input_value, type(dict().keys())): # check if dict keys
+    return list(input_value)
+  elif isinstance(input_value, str): # check if string
+    return [input_value]
   else:
     raise TypeError("Input must be either a string or a list")
 
