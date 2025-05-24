@@ -72,8 +72,10 @@ class Cubes:
     self.color_bands = {}
     self.color_bands['nuance'] = {'red': range(23, 29), 'green': range(13, 19), 'blue': range(3, 9)}
     self.color_bands['goldeneye'] = {'red': range(52, 62), 'green': range(32, 42), 'blue': (11, 21)}
+    
     self.selected_rows = None
     self.selected_cols = None
+    self.rois = pd.DataFrame(columns=['coords', 'style', 'label'])
     
     self.pcs = {}
     self.pcs_transformed = {}
@@ -333,8 +335,8 @@ class Cubes:
     return self
 
 #========= ROI ========================
-
-  def roi(self, x1, y1, width, height, facecolor='none', linewidth = 0.7, edgecolor='red', linestyle='-', **kwargs):
+  # def roi(self, x1, y1, width, height, facecolor='none', linewidth = 0.7, edgecolor='red', linestyle='-', **kwargs):
+  def roi(self, coords=(0, 0, 0, 0), style='yyxx', edgecolor='red', linewidth = 0.7, linestyle='-', facecolor='none', save=False, label=None, **kwargs):
     
     params = {
       'facecolor': facecolor,
@@ -343,15 +345,37 @@ class Cubes:
       'linestyle': linestyle,
       **kwargs
     }
+    if style == 'yyxx':
+      y1, y2, x1, x2 = coords
+      width = abs(x2-x1)
+      height = abs(y2-y1)
+    elif style == 'xyxy':
+      x1, y1, x2, y2 = coords
+      width = abs(x2-x1)
+      height = abs(y2-y1)
+    elif style == 'xywh':
+      x1, y1, width, height = coords
+      x2 = x1+width
+      y2 = y1+height
+
+    # causes strange behaviour when you don't expect
+    y1 = min(y1, y2)
+    y2 = max(y1, y2)
+    x1 = min(x1, x2)
+    x2 = max(x1, x2)
     
     rect = patches.Rectangle((x1, y1), width, height, **params)
     self.ax.add_patch(rect)
 
-    x2 = x1+width
-    y2 = y1+height
+    self.selected_rows = slice(y1, y2)
+    self.selected_cols = slice(x1, x2)
 
-    self.selected_rows = slice(min(y1, y2), max(y1, y2))
-    self.selected_cols = slice(min(x1, x2), max(x1, x2))
+    if save==True:
+      roi = '_'.join(map(str, coords))
+      style = style
+      label = label
+      roi_dict = {'coords': coords, 'style': style, 'label': label}
+      self.rois.loc[roi] = roi_dict
 
     return self
 
