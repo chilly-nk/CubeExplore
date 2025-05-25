@@ -12,6 +12,7 @@ import pytz
 import datetime
 from datetime import datetime
 from typing import Optional
+from collections import defaultdict
 
 # Image analysis modules
 import tifffile as tiff
@@ -54,6 +55,7 @@ class Cubes:
     self.cubes_to_analyse = None
     
     self.raw = {}
+    self.raw_info = defaultdict(dict) # new way of storing related data
     self.metadata = {}
     self.tls_spectrum = None
     self.spectral_sensitivity = None
@@ -61,6 +63,7 @@ class Cubes:
     self.normalized = {}
     
     self.combined = {}
+    self.combined_info = defaultdict(dict) # new 2025-05-25
     # self.combined_wvls = {} # maybe delete
     self.combined_metadata = {}
     
@@ -160,6 +163,9 @@ class Cubes:
         self.metadata[cubename]['expos_val'] = float(exp) if str(exp).isdigit() else exp
         # self.metadata[cubename]['notes'] = self.metadata_df.loc[ex, 'notes'] # Causes a bug when there is no 'notes' field in the metadata
         self.metadata[cubename]['wavelengths'] = np.array(range(emission_start, emission_end+1, step))
+
+        # Developing better and more relevant internal metadata (except the metadata_df) for each cube
+        self.raw_info[cubename].update({'wvls': self.get_wvls(cubename)})
 
   def read_tls_data(self, tls_spectrum_path):
     # Load Correction Data (TLS Basic Wavelength Scan, several scans repetitions). All scans must have the same start, stop, step
@@ -646,23 +652,21 @@ class Cubes:
         print(f"An error occurred while saving the mask: {e}")
 
 #======= GET WVLS ===============
+  
   def get_wvls(self, cubename):
-
-    self.wvls = None
-    self.wavelengths = None #synonimous attribute
-    
     cubename = cubename.split('.')[0]
     emission_start = int(self.metadata_df.loc[cubename, 'emission_start_nm'])
     emission_end = int(self.metadata_df.loc[cubename, 'emission_end_nm'])
     step = int(self.metadata_df.loc[cubename, 'step_nm'])
-    self.wvls = np.arange(emission_start, emission_end+1, step)
-    self.wavelengths = np.arange(emission_start, emission_end+1, step)
-    return self
-
-  def get_wavelengths(self, cubename): # synonimous function to the above
-    self.get_wvls(cubename)
+    wvls = np.arange(emission_start, emission_end+1, step)
+    return wvls
 
 #=======GET SPECTRA============
+
+  def get_spectra_from_mask(self, cubes_to_analyse, which_data='raw', mask_label=None):
+    data, cube_names = self.get_data(which_data, cubes_to_analyse)
+    where = np.where(self.mask == mask_label)
+
 
   def get_spectra(self, cubes_to_analyse, which_data='raw', mask_label=None, df=False, wvls=False, long=False, label=None, sample_size=None):
 
@@ -696,7 +700,7 @@ class Cubes:
           if which_data == 'combined':
             self.spectra_info[cubename]['wvls'] = self.combined_metadata[cubename]['wavelengths']
           else:
-            self.spectra_info[cubename]['wvls'] = self.get_wvls(cubename).wvls
+            self.spectra_info[cubename]['wvls'] = self.get_wvls(cubename)
     else:
       rows = self.selected_rows
       cols = self.selected_cols
@@ -714,7 +718,7 @@ class Cubes:
           if which_data == 'combined':
             self.spectra_info[cubename]['wvls'] = self.combined_metadata[cubename]['wavelengths']
           else:
-            self.spectra_info[cubename]['wvls'] = self.get_wvls(cubename).wvls
+            self.spectra_info[cubename]['wvls'] = self.get_wvls(cubename)
 
     if sample_size is not None:
       np.random.seed(42)
@@ -757,7 +761,7 @@ class Cubes:
     where = np.where(self.mask == mask_label)
     spectra = []
     for cubename in cube_names:
-      wvls = self.get_wvls(cubename).wvls
+      wvls = self.get_wvls(cubename)
       cube_segment = data_to_process[cubename][where]
       spectrum = np.mean(cube_segment, axis = 0)
       spectrum_df = pd.DataFrame([spectrum], index=[cubename], columns=wvls)
@@ -833,36 +837,38 @@ class Cubes:
 
 #============ COMBINE =====================
 
-  def combine(self, cubes_to_analyse = None, which_data = 'raw', description = None):
-    data = getattr(self, which_data)
-    if cubes_to_analyse:
-      cube_names = ensure_list(cubes_to_analyse)
-    else:
-      cube_names = list(data.keys())
-
-    if description == None:
+  def combine(self, cubes_to_analyse = None, which_data = 'raw', label = None):
+    data, cube_names = self.get_data(which_data, cubes_to_analyse)
+    
+    if label == None:
       excitations = [cubename.split("_")[0].split(".")[0] for cubename in cube_names]
-      description = f"{which_data.capitalize()}_{'_'.join(excitations)}"
+      label = f"{which_data.capitalize()}_{'_'.join(excitations)}"
 
-    # self.combined[description] = None
-    # self.combined_wvls[description] = np.empty((0), dtype = np.int64)
-    self.combined_metadata[description] = {}
-    self.combined_metadata[description]['wavelengths'] = np.empty((0), dtype = np.int64)
+    # self.combined[label] = None
+    # self.combined_wvls[label] = np.empty((0), dtype = np.int64)
+    self.combined_metadata[label] = {}
+    self.combined_metadata[label]['wavelengths'] = np.empty((0), dtype = np.int64)
+    self.combined_info[label] = {'wvls': []}
 
-    if description in self.combined:
-      del self.combined[description]
+    if label in self.combined:
+      del self.combined[label]
 
     for cubename in cube_names:
-      print(f"Combining '{cubename}' from '{which_data}' data")
+      print(f"Combining '{cubename}' from '{which_data}' data...")
       cube = data[cubename]
-      wavelengths = self.metadata[cubename]['wavelengths']
-      wavelengths = wavelengths if wavelengths is not None else np.array([])
-      if description not in self.combined:
-        self.combined[description] = np.empty((cube.shape[0], cube.shape[1], 0), dtype = np.float32)
-      self.combined[description] = np.concatenate((self.combined[description], cube), axis = 2)
-      self.combined_metadata[description]['wavelengths'] = np.concatenate((self.combined_metadata[description]['wavelengths'], wavelengths))
-    self.combined_metadata[description]['source'] = which_data
-    self.combined_metadata[description]['cubes'] = cube_names
+      wavelengths = self.metadata[cubename]['wavelengths'] # check usage and delete
+      wavelengths = wavelengths if wavelengths is not None else np.array([]) # check usage and delete
+      wvls = self.get_info(which_data)[cubename]['wvls'] # new 2025-05-25 
+      wvls = [f"{cubename.split('.')[0]}_{wvl}" for wvl in wvls] # new 2025-05-25
+      if label not in self.combined:
+        self.combined[label] = np.empty((cube.shape[0], cube.shape[1], 0), dtype = np.float32)
+      self.combined[label] = np.concatenate((self.combined[label], cube), axis = 2) # check usage and delete
+      self.combined_metadata[label]['wavelengths'] = np.concatenate((self.combined_metadata[label]['wavelengths'], wavelengths)) # check usage and delete
+      self.combined_info[label]['wvls'] += wvls # new 2025-05-25
+    self.combined_metadata[label]['source'] = which_data # check usage and delete
+    self.combined_metadata[label]['cubes'] = cube_names # check usage and delete
+    self.combined_info[label]['source'] = which_data # new 2025-05-25
+    self.combined_info[label]['cubenames'] = cube_names # new 2025-05-25
 
 #============ AVERAGE ======================
   
@@ -976,7 +982,11 @@ class Cubes:
       cube_names = sorted(ensure_list(cubes_to_analyse))
     else:
       cube_names = sorted(ensure_list(data.keys()))
-    return data, cube_names
+    return data, sorted(cube_names)
+  
+  def get_info(self, which_data):
+    info = getattr(self, f"{which_data}_info")
+    return info
 ######################################
 
 def read_metadata(metadata_path, sample_id=None):
