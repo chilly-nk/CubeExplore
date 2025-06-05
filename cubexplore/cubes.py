@@ -759,10 +759,9 @@ class Cubes:
 
     return self
 
-#========== EEM ===============
-
-  def get_eem_new(self, cubes_to_analyse=None, which_data='raw', coords = None, roi_name = None, mask_value=None):
-    data, cube_names = self.get_data(which_data, cubes_to_analyse)
+#======= GET INDEX =============
+  
+  def get_index(self, coords = None, roi_name = None, mask_value=None, **kwargs):
     if roi_name is None and mask_value is None and coords is None:
       y1, y2 = self.selected_rows.start, self.selected_rows.stop
       x1, x2 = self.selected_cols.start, self.selected_cols.stop
@@ -775,6 +774,16 @@ class Cubes:
       where = coords_to_where(self.size, coords)
     elif mask_value is not None and coords == None and roi_name is None:
       where = np.where(self.mask == mask_value)
+    return where, coords, roi_name, mask_value
+
+#========== EEM ===============
+
+  def get_eem(self, cubes_to_analyse=None, which_data='raw', coords=None, roi_name=None, mask_value=None):
+    data, cube_names = self.get_data(which_data, cubes_to_analyse)
+    
+    params = locals()
+    params.pop('self', None)
+    where, coords, roi_name, mask_value = self.get_index(**params)
 
     spectra = []
     for cubename in cube_names:
@@ -784,16 +793,20 @@ class Cubes:
       spectrum_df = pd.DataFrame([spectrum], index=[cubename.split('.')[0]], columns=wvls)
       spectra.append(spectrum_df)
     self.eem = pd.concat(spectra).sort_index(axis=1).sort_index(axis=0, ascending=False)
+    
     self.eem_info = {
       'coords': coords,
       'roi_name': roi_name,
-      'mask_label': mask_value,
+      'mask_value': mask_value,
       'which_data': which_data,
       'cubenames': cube_names,
       }
+    
     return self
 
-  def get_eem(self, cubes_to_analyse = None, which_data = 'raw', mask_label = None, transform = False, plot = True, vmin = None, vmax = None, axis_ratio = None, title = None, region = None, ax = None, cbar_ax = None, fontsize = 'medium', ticksize = 'medium', xtickstep = 2, also_spectra = True):
+#------------------------------------
+
+  def quick_eem(self, cubes_to_analyse = None, which_data = 'raw', mask_value = None, transform = False, plot = True, vmin = None, vmax = None, axis_ratio = None, title = None, region = None, ax = None, cbar_ax = None, fontsize = 'medium', ticksize = 'medium', xtickstep = 2, also_spectra = True):
       
     data_to_process = getattr(self, which_data)
     
@@ -802,8 +815,8 @@ class Cubes:
     else:
       cube_names = self.names
 
-    if mask_label:
-      where = np.where(self.mask == self.mask_labels[mask_label])
+    if mask_value:
+      where = np.where(self.mask == mask_value)
     else:
       rows = self.selected_rows
       cols = self.selected_cols
@@ -811,7 +824,7 @@ class Cubes:
     eem = pd.DataFrame()
     self.spectra_combined_avg = pd.DataFrame()
     for cubename in cube_names:
-      if mask_label:
+      if mask_value:
         cube_segment = data_to_process[cubename][where]
         cube_segment_avg = np.mean(cube_segment, axis = 0).reshape(1, cube_segment.shape[-1])
       else:
@@ -844,9 +857,9 @@ class Cubes:
       sns.heatmap(eem, cmap = 'coolwarm', ax = ax, vmin = vmin, vmax = vmax)
       if title == None:
         if region == None:
-          this_region = f"Segment '{mask_label}'" if mask_label else f"Y={rows.start}:{rows.stop}, X={cols.start}:{cols.stop}"
+          this_region = f"Segment mask='{mask_value}'" if mask_value else f"Y={rows.start}:{rows.stop}, X={cols.start}:{cols.stop}"
         else:
-          this_region = f"Segment '{mask_label}'" if mask_label else f"{region.capitalize()}: Y={rows.start}:{rows.stop}, X={cols.start}:{cols.stop}"
+          this_region = f"Segment mask='{mask_value}'" if mask_value else f"{region.capitalize()}: Y={rows.start}:{rows.stop}, X={cols.start}:{cols.stop}"
         title = f"Average EEM\n({this_region}, {which_data.capitalize()} Data)"
       ax.set_title(title, size = fontsize)
       ax.set_xlabel('Emission', size=fontsize)
@@ -854,6 +867,14 @@ class Cubes:
       ax.tick_params(axis='x', rotation=45, labelsize=ticksize)
       ax.tick_params(axis='y', rotation=0, labelsize=ticksize)
 
+#========== GET SPECTRA NEW ================
+
+  def get_spectra_(self, cubes_to_analyse=None, which_data='raw', coords=None, roi_name=None, mask_value=None):
+    data, cube_names = self.get_data(which_data, cubes_to_analyse)
+    
+    params = locals()
+    params.pop('self', None)
+    where, coords, roi_name, mask_value = self.get_index(**params)
 
 #============ COMBINE =====================
 
