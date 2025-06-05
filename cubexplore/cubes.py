@@ -667,7 +667,6 @@ class Cubes:
     data, cube_names = self.get_data(which_data, cubes_to_analyse)
     where = np.where(self.mask == mask_label)
 
-
   def get_spectra(self, cubes_to_analyse, which_data='raw', mask_label=None, df=False, wvls=False, long=False, label=None, sample_size=None):
 
     self.spectra = {}
@@ -834,6 +833,7 @@ class Cubes:
       ax.set_ylabel('Excitation', size=fontsize)
       ax.tick_params(axis='x', rotation=45, labelsize=ticksize)
       ax.tick_params(axis='y', rotation=0, labelsize=ticksize)
+
 
 #============ COMBINE =====================
 
@@ -1013,4 +1013,12 @@ def bin_cube(cube, bin_size):
   cube_binned = cube.reshape(new_rows, bin_size, new_cols, bin_size, bands).mean(axis = (1, 3))
 
   return cube_binned
+
+#========== GET WHERE =======================
+def coords_to_where(array, coords, style='yyxx'):
+  y1, y2, x1, x2 = coords
+  mask = np.zeros(array.shape[:2], dtype=bool)
+  mask[y1:y2, x1:x2] = True
+  indices = np.where(mask)
+  return indices
 
