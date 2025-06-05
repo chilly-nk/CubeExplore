@@ -56,6 +56,7 @@ class Cubes:
     
     self.raw = {}
     self.raw_info = defaultdict(dict) # new way of storing related data
+    self.size = () # to store the y*x size of the cubes, after checking that all cubes are consistent
     self.metadata = {}
     self.tls_spectrum = None
     self.spectral_sensitivity = None
@@ -166,6 +167,19 @@ class Cubes:
 
         # Developing better and more relevant internal metadata (except the metadata_df) for each cube
         self.raw_info[cubename].update({'wvls': self.get_wvls(cubename)})
+
+    self.sizes = []
+    for cubename in self.raw.keys():
+      cube = self.raw[cubename]
+      size = cube.shape[:2]
+      self.sizes.append(size)
+    if all([size == self.sizes[0] for size in self.sizes]):
+      self.size = self.sizes[0]
+    else:
+      print("Attention! Not all cubes have the same size in xy axes:")
+      for i, cubename in enumerate(self.raw.keys()):
+        print(f"{cubename}: {self.sizes[i]}")
+
 
   def read_tls_data(self, tls_spectrum_path):
     # Load Correction Data (TLS Basic Wavelength Scan, several scans repetitions). All scans must have the same start, stop, step
@@ -342,7 +356,7 @@ class Cubes:
 
 #========= ROI ========================
   # def roi(self, x1, y1, width, height, facecolor='none', linewidth = 0.7, edgecolor='red', linestyle='-', **kwargs):
-  def roi(self, coords=(0, 0, 0, 0), style='yyxx', edgecolor='red', linewidth = 0.7, linestyle='-', facecolor='none', save=False, label=None, **kwargs):
+  def roi(self, coords=(0, 0, 0, 0), style='yyxx', edgecolor='red', linewidth = 0.7, linestyle='-', facecolor='none', keep=False, label=None, **kwargs):
     
     params = {
       'facecolor': facecolor,
@@ -376,11 +390,12 @@ class Cubes:
     self.selected_rows = slice(y1, y2)
     self.selected_cols = slice(x1, x2)
 
-    if save==True:
-      roi = '_'.join(map(str, coords))
-      style = style
-      label = label
-      roi_dict = {'coords': coords, 'style': style, 'label': label}
+    roi = '_'.join(map(str, coords))
+    style = style
+    label = label
+    roi_dict = {'coords': coords, 'style': style, 'label': label}
+    self.last_roi = roi_dict
+    if keep==True:
       self.rois.loc[roi] = roi_dict
 
     return self
@@ -746,28 +761,33 @@ class Cubes:
 
 #========== EEM ===============
 
-  def get_eem_from_mask(self, cubes_to_analyse=None, which_data='raw', mask_label=None):
-    data_to_process = getattr(self, which_data)
-    if cubes_to_analyse:
-      cube_names = ensure_list(cubes_to_analyse)
-    else:
-      cube_names = self.names
-    cube_names = sorted(cube_names)
-    if self.mask_labels:
-      mask_label = self.mask_labels[mask_label]
-    else:
-      mask_label = mask_label
-    where = np.where(self.mask == mask_label)
+  def get_eem_new(self, cubes_to_analyse=None, which_data='raw', coords = None, roi_name = None, mask_value=None):
+    data, cube_names = self.get_data(which_data, cubes_to_analyse)
+    if roi_name is None and mask_value is None and coords is None:
+      y1, y2 = self.selected_rows.start, self.selected_rows.stop
+      x1, x2 = self.selected_cols.start, self.selected_cols.stop
+      coords = (y1, y2, x1, x2)
+      where = coords_to_where(self.size, coords)
+    elif coords and roi_name is None and mask_value is None:
+      where = coords_to_where(self.size, coords)
+    elif roi_name and coords is None and mask_value is None:
+      coords = self.rois.loc[roi_name, 'coords']
+      where = coords_to_where(self.size, coords)
+    elif mask_value is not None and coords == None and roi_name is None:
+      where = np.where(self.mask == mask_value)
+
     spectra = []
     for cubename in cube_names:
       wvls = self.get_wvls(cubename)
-      cube_segment = data_to_process[cubename][where]
+      cube_segment = data[cubename][where]
       spectrum = np.mean(cube_segment, axis = 0)
-      spectrum_df = pd.DataFrame([spectrum], index=[cubename], columns=wvls)
+      spectrum_df = pd.DataFrame([spectrum], index=[cubename.split('.')[0]], columns=wvls)
       spectra.append(spectrum_df)
     self.eem = pd.concat(spectra).sort_index(axis=1).sort_index(axis=0, ascending=False)
     self.eem_info = {
-      'mask_label': mask_label,
+      'coords': coords,
+      'roi_name': roi_name,
+      'mask_label': mask_value,
       'which_data': which_data,
       'cubenames': cube_names,
       }
@@ -1015,9 +1035,9 @@ def bin_cube(cube, bin_size):
   return cube_binned
 
 #========== GET WHERE =======================
-def coords_to_where(array, coords, style='yyxx'):
+def coords_to_where(mask_size, coords, style='yyxx'):
   y1, y2, x1, x2 = coords
-  mask = np.zeros(array.shape[:2], dtype=bool)
+  mask = np.zeros(mask_size, dtype=bool)
   mask[y1:y2, x1:x2] = True
   indices = np.where(mask)
   return indices
