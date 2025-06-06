@@ -678,11 +678,7 @@ class Cubes:
 
 #=======GET SPECTRA============
 
-  def get_spectra_from_mask(self, cubes_to_analyse, which_data='raw', mask_label=None):
-    data, cube_names = self.get_data(which_data, cubes_to_analyse)
-    where = np.where(self.mask == mask_label)
-
-  def get_spectra(self, cubes_to_analyse, which_data='raw', mask_label=None, df=False, wvls=False, long=False, label=None, sample_size=None):
+  def get_spectra_v1(self, cubes_to_analyse, which_data='raw', mask_label=None, df=False, wvls=False, long=False, label=None, sample_size=None):
 
     self.spectra = {}
     self.spectra_info = {}
@@ -869,12 +865,40 @@ class Cubes:
 
 #========== GET SPECTRA NEW ================
 
-  def get_spectra_(self, cubes_to_analyse=None, which_data='raw', coords=None, roi_name=None, mask_value=None):
+  def get_spectra(self, cubes_to_analyse=None, which_data='raw', coords=None, roi_name=None, mask_value=None, sample=None):
     data, cube_names = self.get_data(which_data, cubes_to_analyse)
     
     params = locals()
     params.pop('self', None)
     where, coords, roi_name, mask_value = self.get_index(**params)
+
+    spectra_dfs = []
+    for cubename in cube_names:
+      cube = data[cubename]
+      info = getattr(self, which_data + '_info')
+      wvls = info[cubename]['wvls']
+
+      spectra = cube[where]
+      spectra_df = pd.DataFrame(spectra, columns=wvls)
+      spectra_df['cubename'] = cubename.split('.')[0]
+      spectra_df.set_index('cubename', inplace=True)
+      if sample:
+        spectra_df = spectra_df.sample(sample)
+      spectra_dfs.append(spectra_df)
+    self.spectra = pd.concat(spectra_dfs).sort_index(axis=1)
+    spectra_info = {
+      'which_data': which_data,
+      'coords': [coords] * len(self.spectra),
+      'coords_style': 'yyxx',
+      'roi_name': roi_name,
+      'mask_value': mask_value,
+    }
+    for i, item in enumerate(spectra_info.items()):
+      self.spectra.insert(i, item[0], item[1])
+
+  # def get_spectra_from_rois(self, cubes_to_analyse=None, which_data='raw', sample=None):
+  # take rois names from indices of cubes.rois   
+  # just loop here and collect for all roi_names
 
 #============ COMBINE =====================
 
