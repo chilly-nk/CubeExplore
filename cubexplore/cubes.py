@@ -524,12 +524,8 @@ class Cubes:
 #========= NORMALIZE ===============
 
   def normalize(self, cubes_to_analyse = None, which_data = 'raw', how = 'to_max'):
-    
-    data = getattr(self, which_data)
-    if cubes_to_analyse:
-      cube_names = ensure_list(cubes_to_analyse)
-    else:
-      cube_names = list(data.keys())
+    data, cube_names = self.get_data(which_data, cubes_to_analyse)
+    info = self.get_info(which_data)
     
     if how == 'to_max':
       for cubename in cube_names:
@@ -537,6 +533,7 @@ class Cubes:
         cube_max = np.max(cube, axis = 2, keepdims = True) + np.finfo(float).eps
         cube_normalized = cube / cube_max
         self.normalized[cubename] = cube_normalized
+        self.normalized_info[cubename] = {'how': how,'wvls': info[cubename]['wvls']}
       self.log[self.time()] = {'normalize_to_max': {'which_data': which_data, 'cubes_to_analyse': cube_names}}
     
     elif how == 'snv': # Tested: https://colab.research.google.com/drive/1-x13RJ7qjf-PD-BaR3gzvTUdnr-Xqhax#scrollTo=_6j1pCY_jdfp&line=1&uniqifier=1
@@ -546,6 +543,7 @@ class Cubes:
         cube_std = np.std(cube, axis = 2, keepdims = True)
         cube_snv = (cube - cube_avg) / cube_std
         self.normalized[cubename] = cube_snv
+        self.normalized_info[cubename] = {'how': how,'wvls': info[cubename]['wvls']}
       self.log[self.time()] = {'SNV': {'which_data': which_data, 'cubes_to_analyse': cube_names}}
 
     elif how == 'zscale':
@@ -555,6 +553,7 @@ class Cubes:
         cube_std = np.std(cube, axis = (0, 1), keepdims = True)
         cube_zscaled = (cube - cube_avg) / cube_std
         self.normalized[cubename] = cube_zscaled
+        self.normalized_info[cubename] = {'how': how,'wvls': info[cubename]['wvls']}
       self.log[self.time()] = {'ZScale': {'which_data': which_data, 'cubes_to_analyse': cube_names}}
 
     elif how == 'by_band':
@@ -563,6 +562,7 @@ class Cubes:
         cube_max = np.max(cube, axis = (0, 1), keepdims=True) + np.finfo(float).eps
         cube_normalized = cube / cube_max
         self.normalized[cubename] = cube_normalized
+        self.normalized_info[cubename] = {'how': how,'wvls': info[cubename]['wvls']}
       self.log[self.time()] = {'normalize_by_band': {'which_data': which_data, 'cubes_to_analyse': cube_names}}
 
 #======CORRECTION BY EXPOSURE TIME========
