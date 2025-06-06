@@ -79,7 +79,8 @@ class Cubes:
     
     self.selected_rows = None
     self.selected_cols = None
-    self.rois = pd.DataFrame(columns=['coords', 'style', 'label'])
+    
+    self.reset_rois()
     
     self.pcs = {}
     self.pcs_transformed = {}
@@ -355,7 +356,12 @@ class Cubes:
     return self
 
 #========= ROI ========================
-  # def roi(self, x1, y1, width, height, facecolor='none', linewidth = 0.7, edgecolor='red', linestyle='-', **kwargs):
+
+  def reset_rois(self):
+    self.rois = pd.DataFrame(columns=['coords', 'style', 'label'])
+  
+#---------------------------------------------
+
   def roi(self, coords=(0, 0, 0, 0), style='yyxx', edgecolor='red', linewidth = 0.7, linestyle='-', facecolor='none', keep=False, label=None, **kwargs):
     
     params = {
@@ -893,12 +899,28 @@ class Cubes:
       'roi_name': roi_name,
       'mask_value': mask_value,
     }
+    self.spectra_ids = []
     for i, item in enumerate(spectra_info.items()):
       self.spectra.insert(i, item[0], item[1])
+      self.spectra_ids.append(item[0])
+    self.spectra_wvls = sorted(list(set(self.spectra.columns).difference(set(self.spectra_ids))))
+    return self
 
-  # def get_spectra_from_rois(self, cubes_to_analyse=None, which_data='raw', sample=None):
-  # take rois names from indices of cubes.rois   
-  # just loop here and collect for all roi_names
+#----------------------------------------------------
+
+  def spectra_from_rois(self, cubes_to_analyse=None, which_data='raw', sample=None):
+    rois = self.rois.index.tolist()
+    spectra = []
+    for roi in rois:
+      self.get_spectra(cubes_to_analyse, which_data, roi_name=roi, sample=sample)
+      spectra.append(self.spectra)
+    self.spectra = pd.concat(spectra)
+    return self
+  
+#----------------------------------------------------
+
+  def spectra_to_long(self):
+    self.spectra = self.spectra.melt(self.spectra_ids, self.spectra_wvls, 'wavelength', 'intensity')
 
 #============ COMBINE =====================
 
