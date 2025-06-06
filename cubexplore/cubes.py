@@ -62,6 +62,7 @@ class Cubes:
     self.spectral_sensitivity = None
     self.processed = {}
     self.normalized = {}
+    self.normalized_info = {}
     
     self.combined = {}
     self.combined_info = defaultdict(dict) # new 2025-05-25
