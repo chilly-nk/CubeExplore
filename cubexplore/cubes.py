@@ -128,6 +128,7 @@ class Cubes:
       cube = np.array(img_loaded, dtype = np.float32)
       
       self.raw[cubename] = cube
+      self.raw_info[cubename].update({'wvls': np.arange(cube.shape[2])})
       
       ex = cubename.split("_")[0].split(".")[0]
       md = {'ex': ex,
