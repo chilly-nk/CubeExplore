@@ -61,6 +61,7 @@ class Cubes:
     self.tls_spectrum = None
     self.spectral_sensitivity = None
     self.processed = {}
+    self.processed_info = {}
     self.normalized = {}
     self.normalized_info = {}
     
