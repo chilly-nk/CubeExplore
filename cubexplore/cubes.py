@@ -572,6 +572,7 @@ class Cubes:
   def correct_by_exposure(self, cubes_to_analyse=None, which_data='raw', per_wavelength=False, exposure_data: Optional[pd.Series] = None):
     # Date created: 2025-05-23
     data, cube_names = self.get_data(which_data, cubes_to_analyse)
+    info = self.get_info(which_data)
       
     if exposure_data is None:
       exposure_col = [col for col in self.metadata_df.columns if 'exposure_time' in col][0]
@@ -579,7 +580,16 @@ class Cubes:
 
     for cubename in cube_names:
       exposure_val = exposure_data[cubename.split('.')[0]]
-      self.processed[cubename] = data[cubename] / exposure_val 
+      self.processed[cubename] = data[cubename] / exposure_val
+      
+      cube_info = {
+        'processing': 'correct_by_exposure',
+        'which_data': which_data,
+        'per_wavelength': per_wavelength,
+        'exposure_data': exposure_data,
+        'wvls': info[cubename]['wvls']
+      }
+      self.processed_info[cubename] = cube_info
 
 #======= GAUSSIAN FILTER ===============
 
