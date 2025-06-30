@@ -130,7 +130,7 @@ class Cubes:
       self.raw[cubename] = cube
       self.raw_info[cubename].update({'wvls': np.arange(cube.shape[2])})
       
-      ex = cubename.split("_")[0].split(".")[0]
+      ex = cubename.split("-")[0].split(".")[0]
       md = {'ex': ex,
             'emission_start': None,
             'emission_end': None,
