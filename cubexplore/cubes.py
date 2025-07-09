@@ -544,6 +544,7 @@ class Cubes:
         cube = data[cubename]
         cube_avg = np.mean(cube, axis = 2, keepdims = True)
         cube_std = np.std(cube, axis = 2, keepdims = True)
+        cube_std = np.where(cube_std == 0, 1, cube_std)
         cube_snv = (cube - cube_avg) / cube_std
         self.normalized[cubename] = cube_snv
         self.normalized_info[cubename] = {'how': how,'wvls': info[cubename]['wvls']}
@@ -554,6 +555,7 @@ class Cubes:
         cube = data[cubename]
         cube_avg = np.mean(cube, axis = (0, 1), keepdims = True)
         cube_std = np.std(cube, axis = (0, 1), keepdims = True)
+        cube_std = np.where(cube_std == 0, 1, cube_std)
         cube_zscaled = (cube - cube_avg) / cube_std
         self.normalized[cubename] = cube_zscaled
         self.normalized_info[cubename] = {'how': how,'wvls': info[cubename]['wvls']}
