@@ -126,6 +126,9 @@ class Cubes:
         img_loaded = img.load()
       elif data_source == 'tiff_cubes':
         img_loaded = tiff.imread(os.path.join(data_path, cubename)).transpose(1, 2, 0)      
+      elif data_source == 'tiff_slices':
+        img_loaded = read_cube_slices(data_path, cubename)
+        
       cube = np.array(img_loaded, dtype = np.float32)
       
       self.raw[cubename] = cube
@@ -1090,6 +1093,20 @@ class Cubes:
     info = getattr(self, f"{which_data}_info")
     return info
 ######################################
+
+def read_cube_slices(data_path, cubename):
+  from pathlib import Path
+  cube_path = Path(data_path, cubename)
+  bands = cube_path.glob('*.tif*')
+  cube = []
+  for bandpath in sorted(list(bands)):
+    # band = Image.open(bandpath)
+    print(f"reading {bandpath.name}")
+    band = tiff.imread(bandpath) #.transpose(1, 2, 0) 
+    band = np.array(band, dtype=np.float32)
+    cube.append(band)
+  cube = np.stack(cube, axis=-1)
+  return cube
 
 def read_metadata(metadata_path, sample_id=None):
   metadata = pd.read_csv(metadata_path)
