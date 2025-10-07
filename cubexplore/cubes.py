@@ -573,6 +573,42 @@ class Cubes:
         self.normalized_info[cubename] = {'how': how,'wvls': info[cubename]['wvls']}
       self.log[self.time()] = {'normalize_by_band': {'which_data': which_data, 'cubes_to_analyse': cube_names}}
 
+#======CORRECTION BY ANY ========
+  
+  def correct(self, by='exposure_time_ms', which_data=None, cubes_to_correct=None, correction_data: Optional[pd.Series] = None, normalized_to=None):
+    # Date created: 2025-10-07
+    if not which_data:
+      if self.processed:
+        which_data = 'processed'
+      else:
+        which_data = 'raw'
+    
+    data, cubenames = self.get_data(which_data, cubes_to_correct)
+    info = self.get_info(which_data)
+      
+    if correction_data is None:
+      correction_data = self.metadata_df[by]
+      if normalized_to:
+        factor = getattr(correction_data, normalized_to)()
+        correction_data = correction_data / factor
+
+    for cubename in cubenames:
+      print(f"Correcting '{cubename}' by '{by}' from '{which_data}' data...")
+      value = correction_data[cubename.split('.')[0]]
+      self.processed[cubename] = data[cubename] / value
+      
+      cube_info = {
+        'processing': 'data_correction',
+        'by': by,
+        'which_data': which_data,
+        'cubes_to_correct': cubes_to_correct,
+        'correction_data': correction_data,
+        'wvls': info[cubename]['wvls']
+      }
+      self.processed_info[cubename] = cube_info
+    
+    return self
+
 #======CORRECTION BY EXPOSURE TIME========
   
   def correct_by_exposure(self, cubes_to_analyse=None, which_data='raw', per_wavelength=False, exposure_data: Optional[pd.Series] = None):
