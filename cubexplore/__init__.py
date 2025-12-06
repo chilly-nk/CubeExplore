@@ -14,3 +14,4 @@ from .utils import ensure_list
 from .utils import read_sheet
 
 from .qc import SampleNames
+from .qc import CharCheck
