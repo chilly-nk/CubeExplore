@@ -15,3 +15,7 @@ from .utils import read_sheet
 
 from .qc import SampleNames
 from .qc import CharCheck
+
+from .spectra import read_spectra
+from .spectra import read_maya
+from .spectra import FWHM
