@@ -588,9 +588,12 @@ class Cubes:
       
     if correction_data is None:
       correction_data = self.metadata_df[by]
-      if normalized_to:
-        factor = getattr(correction_data, normalized_to)()
-        correction_data = correction_data / factor
+    if correction_data:
+      by = correction_data.name
+    
+    if normalized_to:
+      factor = getattr(correction_data, normalized_to)()
+      correction_data = correction_data / factor
 
     for cubename in cubenames:
       print(f"Correcting '{cubename}' by '{by}' from '{which_data}' data...")
