@@ -545,7 +545,7 @@ class Cubes:
     elif how == 'minmax':
       for cubename in cube_names:
         cube = data[cubename]
-        cube_normalized = (cube - cube.max(axis=2, keepdims=True)) / (cube.max(axis=2, keepdims=True)-cube.min(axis=2, keepdims=True) + np.finfo(float).eps)        
+        cube_normalized = (cube - cube.min(axis=2, keepdims=True)) / (cube.max(axis=2, keepdims=True)-cube.min(axis=2, keepdims=True) + np.finfo(float).eps)        
         self.normalized[cubename] = cube_normalized
         self.normalized_info[cubename] = {'how': how,'wvls': info[cubename]['wvls']}
       self.log[self.time()] = {f'normalize_{how}': {'which_data': which_data, 'cubes_to_analyse': cube_names}}
