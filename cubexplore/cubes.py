@@ -542,6 +542,14 @@ class Cubes:
         self.normalized_info[cubename] = {'how': how,'wvls': info[cubename]['wvls']}
       self.log[self.time()] = {'normalize_to_max': {'which_data': which_data, 'cubes_to_analyse': cube_names}}
     
+    elif how == 'minmax':
+      for cubename in cube_names:
+        cube = data[cubename]
+        cube_normalized = (cube - cube.max(axis=2, keepdims=True)) / (cube.max(axis=2, keepdims=True)-cube.min(axis=2, keepdims=True) + np.finfo(float).eps)        
+        self.normalized[cubename] = cube_normalized
+        self.normalized_info[cubename] = {'how': how,'wvls': info[cubename]['wvls']}
+      self.log[self.time()] = {f'normalize_{how}': {'which_data': which_data, 'cubes_to_analyse': cube_names}}
+
     elif how == 'snv': # Tested: https://colab.research.google.com/drive/1-x13RJ7qjf-PD-BaR3gzvTUdnr-Xqhax#scrollTo=_6j1pCY_jdfp&line=1&uniqifier=1
       for cubename in cube_names:
         cube = data[cubename]
